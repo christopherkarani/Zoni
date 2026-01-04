@@ -224,16 +224,40 @@ public enum VectorStoreFactory {
             return InMemoryVectorStore()
 
         case .sqlite(let path, let tableName, let dimensions):
+            // Validate inputs before passing to constructor
+            guard !path.isEmpty else {
+                throw ZoniError.vectorStoreUnavailable(name: "sqlite: path cannot be empty")
+            }
+            guard dimensions > 0 else {
+                throw ZoniError.vectorStoreUnavailable(name: "sqlite: dimensions must be positive, got \(dimensions)")
+            }
+
             do {
                 return try SQLiteVectorStore(path: path, tableName: tableName, dimensions: dimensions)
             } catch {
-                throw ZoniError.vectorStoreUnavailable(name: "sqlite: \(error.localizedDescription)")
+                throw ZoniError.vectorStoreUnavailable(name: "sqlite: failed to initialize - \(error.localizedDescription)")
             }
 
         case .qdrant(let url, let collection, let apiKey):
+            // Validate inputs
+            guard !collection.isEmpty else {
+                throw ZoniError.vectorStoreUnavailable(name: "qdrant: collection name cannot be empty")
+            }
+            guard url.scheme == "http" || url.scheme == "https" else {
+                throw ZoniError.vectorStoreUnavailable(name: "qdrant: URL must use http or https scheme")
+            }
+
             return QdrantStore(baseURL: url, collectionName: collection, apiKey: apiKey)
 
         case .pinecone(let apiKey, let indexHost, let namespace):
+            // Validate inputs
+            guard !apiKey.isEmpty else {
+                throw ZoniError.vectorStoreUnavailable(name: "pinecone: API key cannot be empty")
+            }
+            guard !indexHost.isEmpty else {
+                throw ZoniError.vectorStoreUnavailable(name: "pinecone: index host cannot be empty")
+            }
+
             return PineconeStore(apiKey: apiKey, indexHost: indexHost, namespace: namespace)
         }
     }

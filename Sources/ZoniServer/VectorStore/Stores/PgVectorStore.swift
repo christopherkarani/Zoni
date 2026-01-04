@@ -601,6 +601,13 @@ public actor PgVectorStore: VectorStore {
                 )
             }
 
+            // Validate that all values are finite (not NaN or Infinity)
+            guard embedding.hasFiniteValues() else {
+                throw ZoniError.insertionFailed(
+                    reason: "Embedding for chunk '\(chunk.id)' contains non-finite values (NaN or Infinity)"
+                )
+            }
+
             // Encode custom metadata as JSON
             let customJSON: String
             do {
@@ -701,6 +708,11 @@ public actor PgVectorStore: VectorStore {
         limit: Int,
         filter: MetadataFilter?
     ) async throws -> [RetrievalResult] {
+        // Validate limit parameter
+        guard limit > 0 else {
+            throw ZoniError.searchFailed(reason: "Limit must be greater than 0, got \(limit)")
+        }
+
         // Validate query dimensions
         guard query.dimensions == configuration.dimensions else {
             throw ZoniError.searchFailed(
@@ -815,19 +827,19 @@ public actor PgVectorStore: VectorStore {
             return
         }
 
-        for id in ids {
-            let deleteSQL = "DELETE FROM \(configuration.tableName) WHERE id = $1"
+        // Use batch deletion with IN clause for better performance
+        let placeholders = (1...ids.count).map { "$\($0)" }.joined(separator: ", ")
+        let deleteSQL = "DELETE FROM \(configuration.tableName) WHERE id IN (\(placeholders))"
 
-            do {
-                try await connection.query(
-                    PostgresQuery(unsafeSQL: deleteSQL, binds: PostgresBindings(encodable: [id])),
-                    logger: logger
-                )
-            } catch {
-                throw ZoniError.insertionFailed(
-                    reason: "Failed to delete chunk '\(id)': \(error.localizedDescription)"
-                )
-            }
+        do {
+            try await connection.query(
+                PostgresQuery(unsafeSQL: deleteSQL, binds: PostgresBindings(encodable: ids)),
+                logger: logger
+            )
+        } catch {
+            throw ZoniError.insertionFailed(
+                reason: "Failed to delete \(ids.count) chunks: \(error.localizedDescription)"
+            )
         }
     }
 

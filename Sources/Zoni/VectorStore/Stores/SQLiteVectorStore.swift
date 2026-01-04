@@ -116,6 +116,12 @@ public actor SQLiteVectorStore: VectorStore {
     /// The store does not enforce dimension matching during operations.
     private let dimensions: Int
 
+    /// The actual dimensions of embeddings stored in the database.
+    ///
+    /// This is set on the first `add()` call and validated on subsequent calls
+    /// to ensure all embeddings have consistent dimensions.
+    private var actualDimensions: Int?
+
     // MARK: - Table Definition
 
     /// The SQLite table expression for chunks.
@@ -290,11 +296,32 @@ public actor SQLiteVectorStore: VectorStore {
         }
 
         // Validate embedding dimensions
-        for (index, embedding) in embeddings.enumerated() {
-            guard embedding.dimensions == dimensions else {
-                throw ZoniError.insertionFailed(
-                    reason: "Embedding \(index) has \(embedding.dimensions) dimensions, expected \(dimensions)"
-                )
+        if let firstDim = embeddings.first?.dimensions {
+            // Check against actual stored dimensions
+            if let actual = actualDimensions {
+                guard firstDim == actual else {
+                    throw ZoniError.insertionFailed(
+                        reason: "Embedding dimensions (\(firstDim)) do not match stored dimensions (\(actual))"
+                    )
+                }
+            } else {
+                // First add - set actual dimensions
+                actualDimensions = firstDim
+            }
+
+            // Validate all embeddings have consistent dimensions and finite values
+            for (index, embedding) in embeddings.enumerated() {
+                guard embedding.dimensions == firstDim else {
+                    throw ZoniError.insertionFailed(
+                        reason: "Embedding \(index) has \(embedding.dimensions) dimensions, expected \(firstDim)"
+                    )
+                }
+
+                guard embedding.hasFiniteValues() else {
+                    throw ZoniError.insertionFailed(
+                        reason: "Embedding \(index) contains non-finite values (NaN or Infinity)"
+                    )
+                }
             }
         }
 
@@ -390,6 +417,11 @@ public actor SQLiteVectorStore: VectorStore {
         limit: Int,
         filter: MetadataFilter?
     ) async throws -> [RetrievalResult] {
+        // Validate limit parameter
+        guard limit > 0 else {
+            throw ZoniError.searchFailed(reason: "Limit must be greater than 0, got \(limit)")
+        }
+
         // Validate query embedding dimensions
         guard query.dimensions == dimensions else {
             throw ZoniError.searchFailed(

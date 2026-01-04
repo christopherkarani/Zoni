@@ -41,6 +41,13 @@ public struct Embedding: Sendable, Codable, Equatable {
         self.vector = vector
         self.model = model
     }
+
+    /// Checks if all values in the vector are finite (not NaN or Infinity).
+    ///
+    /// - Returns: `true` if all elements are finite, `false` if any element is NaN or Infinity.
+    public func hasFiniteValues() -> Bool {
+        vector.allSatisfy { $0.isFinite }
+    }
 }
 
 // MARK: - Vector Math Operations

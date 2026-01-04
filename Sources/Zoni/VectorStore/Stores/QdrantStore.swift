@@ -328,6 +328,11 @@ public actor QdrantStore: VectorStore {
         limit: Int,
         filter: MetadataFilter?
     ) async throws -> [RetrievalResult] {
+        // Validate limit parameter
+        guard limit > 0 else {
+            throw ZoniError.searchFailed(reason: "Limit must be greater than 0, got \(limit)")
+        }
+
         let url = baseURL.appendingPathComponent("collections/\(collectionName)/points/search")
         var request = HTTPClientRequest(url: url.absoluteString)
         request.method = .POST

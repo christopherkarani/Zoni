@@ -33,6 +33,24 @@ import Foundation
 /// For large datasets (>10,000 chunks) or production workloads, consider using
 /// a dedicated vector database like ChromaDB, Pinecone, or Qdrant.
 ///
+/// ## Memory Constraints
+///
+/// This store keeps all data in memory. Memory usage is approximately:
+/// - **Embeddings**: `chunks × dimensions × 4 bytes` (for Float32)
+/// - **Chunks**: Varies based on content size and metadata
+///
+/// **Example calculations**:
+/// - 10,000 chunks × 1536 dimensions × 4 bytes ≈ 62 MB (embeddings only)
+/// - 100,000 chunks × 1536 dimensions × 4 bytes ≈ 615 MB (embeddings only)
+///
+/// **Recommended limits**:
+/// - Small datasets: < 10,000 chunks (< 100 MB total memory)
+/// - Medium datasets: 10,000-50,000 chunks (100-500 MB total memory)
+/// - Large datasets: > 50,000 chunks - **consider using a database-backed store**
+///
+/// The `load(from:)` method enforces a 100 MB file size limit to prevent
+/// loading excessively large datasets that could cause memory issues.
+///
 /// ## Example Usage
 ///
 /// ```swift
@@ -150,7 +168,7 @@ public actor InMemoryVectorStore: VectorStore {
             )
         }
 
-        // Validate consistent dimensions across all embeddings
+        // Validate consistent dimensions and finite values across all embeddings
         if let firstDim = embeddings.first?.dimensions {
             for (index, embedding) in embeddings.enumerated() {
                 guard embedding.dimensions == firstDim else {
@@ -158,18 +176,23 @@ public actor InMemoryVectorStore: VectorStore {
                         reason: "Inconsistent embedding dimensions: index \(index) has \(embedding.dimensions), expected \(firstDim)"
                     )
                 }
+
+                guard embedding.hasFiniteValues() else {
+                    throw ZoniError.insertionFailed(
+                        reason: "Embedding at index \(index) contains non-finite values (NaN or Infinity)"
+                    )
+                }
             }
 
             // Check against expected dimensions (set on first add)
-            if let expectedDim = self.expectedDimensions {
-                guard firstDim == expectedDim else {
-                    throw ZoniError.insertionFailed(
-                        reason: "Embedding dimensions (\(firstDim)) do not match expected dimensions (\(expectedDim))"
-                    )
-                }
-            } else {
-                // First add - set expected dimensions
+            // This is atomic because we're in an actor
+            if self.expectedDimensions == nil {
+                // First add - set expected dimensions atomically
                 self.expectedDimensions = firstDim
+            } else if let expectedDim = self.expectedDimensions, firstDim != expectedDim {
+                throw ZoniError.insertionFailed(
+                    reason: "Embedding dimensions (\(firstDim)) do not match expected dimensions (\(expectedDim))"
+                )
             }
         }
 
@@ -224,6 +247,11 @@ public actor InMemoryVectorStore: VectorStore {
         limit: Int,
         filter: MetadataFilter?
     ) async throws -> [RetrievalResult] {
+        // Validate limit parameter
+        guard limit > 0 else {
+            throw ZoniError.searchFailed(reason: "Limit must be greater than 0, got \(limit)")
+        }
+
         // Collect all matching chunks with their similarity scores
         var results: [(chunk: Chunk, score: Float)] = []
 

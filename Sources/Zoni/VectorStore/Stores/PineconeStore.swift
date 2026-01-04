@@ -308,6 +308,11 @@ public actor PineconeStore: VectorStore {
         limit: Int,
         filter: MetadataFilter?
     ) async throws -> [RetrievalResult] {
+        // Validate limit parameter
+        guard limit > 0 else {
+            throw ZoniError.searchFailed(reason: "Limit must be greater than 0, got \(limit)")
+        }
+
         // Build the query request
         let url = URL(string: "\(indexHost)/query")!
         var request = URLRequest(url: url)
