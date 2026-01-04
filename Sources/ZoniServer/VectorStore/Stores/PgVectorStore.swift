@@ -129,6 +129,48 @@ private enum ValidationError: Error, LocalizedError {
 /// - `ZoniError.vectorStoreConnectionFailed` - Connection issues
 /// - `ZoniError.insertionFailed` - Insert/update failures
 /// - `ZoniError.searchFailed` - Search query failures
+///
+/// ## Connection Pooling for Production
+///
+/// For production workloads with high concurrency, use a connection pool instead of
+/// a single connection. This improves performance and resource utilization:
+///
+/// ```swift
+/// // Simple connection pool pattern
+/// actor PostgresConnectionPool {
+///     private var connections: [PgVectorStore] = []
+///     private let maxConnections = 10
+///     private let config: PgVectorStore.Configuration
+///     private let eventLoopGroup: EventLoopGroup
+///     private let connectionString: String
+///
+///     func withConnection<T>(_ operation: (PgVectorStore) async throws -> T) async throws -> T {
+///         // Get or create a connection
+///         let store: PgVectorStore
+///         if connections.isEmpty {
+///             store = try await PgVectorStore.connect(
+///                 connectionString: connectionString,
+///                 configuration: config,
+///                 eventLoopGroup: eventLoopGroup
+///             )
+///         } else {
+///             store = connections.removeLast()
+///         }
+///
+///         // Execute operation
+///         let result = try await operation(store)
+///
+///         // Return connection to pool
+///         if connections.count < maxConnections {
+///             connections.append(store)
+///         } else {
+///             await store.close()
+///         }
+///
+///         return result
+///     }
+/// }
+/// ```
 public actor PgVectorStore: VectorStore {
 
     // MARK: - Properties

@@ -91,6 +91,13 @@ public enum VectorStoreConfig: Sendable {
     ///     doesn't exist when `ensureCollection(dimensions:)` is called.
     ///   - apiKey: Optional API key for authentication. Required for Qdrant Cloud,
     ///     optional for self-hosted instances.
+    ///
+    /// ## Security Best Practices
+    ///
+    /// **Never hardcode API keys in source code.** Instead:
+    /// - Use environment variables: `ProcessInfo.processInfo.environment["QDRANT_API_KEY"]`
+    /// - Use secure configuration management (e.g., AWS Secrets Manager, Azure Key Vault)
+    /// - Use Xcode configuration files (.xcconfig) excluded from version control
     case qdrant(url: URL, collection: String, apiKey: String?)
 
     /// Pinecone cloud vector store.
@@ -107,6 +114,13 @@ public enum VectorStoreConfig: Sendable {
     ///     console when you select an index (e.g., `"your-index-abc123.svc.us-east1-gcp.pinecone.io"`).
     ///   - namespace: Optional namespace to isolate vectors. Vectors in different
     ///     namespaces are completely separate and cannot be queried together.
+    ///
+    /// ## Security Best Practices
+    ///
+    /// **Never hardcode API keys in source code.** Instead:
+    /// - Use environment variables: `ProcessInfo.processInfo.environment["PINECONE_API_KEY"]`
+    /// - Use secure configuration management (e.g., AWS Secrets Manager, Azure Key Vault)
+    /// - Use Xcode configuration files (.xcconfig) excluded from version control
     case pinecone(apiKey: String, indexHost: String, namespace: String?)
 }
 

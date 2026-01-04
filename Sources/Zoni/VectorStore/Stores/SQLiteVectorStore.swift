@@ -429,7 +429,9 @@ public actor SQLiteVectorStore: VectorStore {
             )
         }
 
-        var results: [(chunk: Chunk, score: Float)] = []
+        // Use a min-heap to efficiently track top-N results without loading all into memory
+        var topResults: [(chunk: Chunk, score: Float)] = []
+        topResults.reserveCapacity(limit)
 
         do {
             // Load all rows and compute similarity in Swift
@@ -456,7 +458,20 @@ public actor SQLiteVectorStore: VectorStore {
                 let embedding = try parseRowToEmbedding(row)
                 let score = VectorMath.cosineSimilarity(query.vector, embedding.vector)
 
-                results.append((chunk, score))
+                // Maintain top-N results using a bounded heap approach
+                if topResults.count < limit {
+                    // Haven't filled the heap yet, just append
+                    topResults.append((chunk, score))
+                    if topResults.count == limit {
+                        // Sort once when we reach capacity
+                        topResults.sort { $0.score > $1.score }
+                    }
+                } else if score > topResults[limit - 1].score {
+                    // This score is better than the worst in our top-N
+                    // Replace the worst and re-sort to maintain order
+                    topResults[limit - 1] = (chunk, score)
+                    topResults.sort { $0.score > $1.score }
+                }
             }
         } catch let error as ZoniError {
             throw error
@@ -466,11 +481,10 @@ public actor SQLiteVectorStore: VectorStore {
             )
         }
 
-        // Sort by score descending (higher similarity = more relevant)
-        results.sort { $0.score > $1.score }
-
-        // Take the top N results
-        let topResults = results.prefix(limit)
+        // Final sort if we have less than limit results
+        if topResults.count < limit {
+            topResults.sort { $0.score > $1.score }
+        }
 
         // Convert to RetrievalResult objects
         return topResults.map { RetrievalResult(chunk: $0.chunk, score: $0.score) }

@@ -125,13 +125,30 @@ public actor InMemoryVectorStore: VectorStore {
     /// memory issues.
     private static let maxLoadFileSize = 100 * 1024 * 1024
 
+    /// Maximum number of chunks to prevent unbounded memory growth.
+    ///
+    /// This limit prevents DoS attacks or runaway processes from consuming
+    /// all available memory. Default: 1,000,000 chunks.
+    ///
+    /// **Memory calculation**: 1M chunks × 1536 dims × 4 bytes ≈ 6 GB (embeddings only)
+    ///
+    /// This can be configured per-instance if needed, but provides a reasonable
+    /// default for most production use cases.
+    private let maxChunkCount: Int
+
     // MARK: - Initialization
 
     /// Creates a new empty in-memory vector store.
     ///
     /// The store starts with no data. Use `add(_:embeddings:)` to populate
     /// it with chunks, or `load(from:)` to restore from a saved state.
-    public init() {}
+    ///
+    /// - Parameter maxChunkCount: Maximum number of chunks to store. Default: 1,000,000.
+    ///   This prevents unbounded memory growth. Set to `Int.max` to disable the limit
+    ///   (not recommended for production).
+    public init(maxChunkCount: Int = 1_000_000) {
+        self.maxChunkCount = maxChunkCount
+    }
 
     // MARK: - VectorStore Protocol
 
@@ -165,6 +182,15 @@ public actor InMemoryVectorStore: VectorStore {
         guard chunks.count == embeddings.count else {
             throw ZoniError.insertionFailed(
                 reason: "Chunk count (\(chunks.count)) does not match embedding count (\(embeddings.count))"
+            )
+        }
+
+        // Check memory limits to prevent unbounded growth
+        let newUniqueChunks = chunks.filter { self.chunks[$0.id] == nil }.count
+        let projectedTotal = self.chunks.count + newUniqueChunks
+        guard projectedTotal <= maxChunkCount else {
+            throw ZoniError.insertionFailed(
+                reason: "Maximum chunk limit exceeded: attempting to add \(newUniqueChunks) new chunks would result in \(projectedTotal) total chunks, exceeding limit of \(maxChunkCount)"
             )
         }
 
