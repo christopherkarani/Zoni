@@ -626,12 +626,12 @@ struct EmbeddingTests {
         #expect(similarity == 0.0)
     }
 
-    @Test("Dimension mismatch returns infinity for euclidean distance")
+    @Test("Dimension mismatch returns 0.0 for euclidean distance")
     func dimensionMismatchEuclideanDistance() {
         let e1 = Embedding(vector: [1.0, 2.0, 3.0])
         let e2 = Embedding(vector: [1.0, 2.0])
         let distance = e1.euclideanDistance(to: e2)
-        #expect(distance == Float.infinity)
+        #expect(distance == 0.0)
     }
 
     @Test("Dimension mismatch returns 0.0 for dot product")

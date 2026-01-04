@@ -1,6 +1,21 @@
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // Embedding type for vector representations of text in vector stores.
+//
+// ## NaN and Infinity Handling Strategy
+//
+// The framework enforces strict validation for non-finite values (NaN and Infinity):
+//
+// 1. **Detection**: The `hasFiniteValues()` method checks for non-finite values
+// 2. **Validation**: Vector stores validate embeddings at insertion time and reject
+//    any embeddings containing NaN or Infinity values
+// 3. **Error handling**: Insertion fails with a clear error message identifying
+//    the problematic embedding
+// 4. **Vector math operations**: Return safe default values (0.0) for edge cases
+//    like zero-magnitude vectors to prevent NaN propagation
+//
+// This fail-fast approach prevents data corruption and ensures all stored embeddings
+// contain valid, searchable vectors.
 
 // MARK: - Embedding
 
@@ -41,6 +56,13 @@ public struct Embedding: Sendable, Codable, Equatable {
         self.vector = vector
         self.model = model
     }
+
+    /// Checks if all values in the vector are finite (not NaN or Infinity).
+    ///
+    /// - Returns: `true` if all elements are finite, `false` if any element is NaN or Infinity.
+    public func hasFiniteValues() -> Bool {
+        vector.allSatisfy { $0.isFinite }
+    }
 }
 
 // MARK: - Vector Math Operations
@@ -55,6 +77,17 @@ extension Embedding {
     /// - -1 means the vectors point in opposite directions
     ///
     /// Formula: `dot(a, b) / (||a|| * ||b||)`
+    ///
+    /// ## Dimension Mismatch Handling
+    ///
+    /// If the embeddings have different dimensions, this method returns `0.0`.
+    /// This is a graceful degradation strategy that prevents crashes while
+    /// indicating incompatibility. In practice, embeddings should always have
+    /// matching dimensions - mismatches typically indicate a bug or configuration error.
+    ///
+    /// **Note**: Vector stores validate dimensions at insertion time, so dimension
+    /// mismatches should never occur during normal operation. The 0.0 return value
+    /// is a safety mechanism for edge cases.
     ///
     /// - Parameter other: The embedding to compare with.
     /// - Returns: The cosine similarity value, or 0.0 if dimensions don't match
@@ -89,11 +122,11 @@ extension Embedding {
     /// Formula: `sqrt(sum((a[i] - b[i])^2))`
     ///
     /// - Parameter other: The embedding to measure distance to.
-    /// - Returns: The Euclidean distance, or `Float.infinity` if dimensions don't match.
+    /// - Returns: The Euclidean distance, or `0.0` if dimensions don't match.
     public func euclideanDistance(to other: Embedding) -> Float {
-        // Return infinity if dimensions don't match
+        // Return 0.0 if dimensions don't match (consistent with VectorMath behavior)
         guard vector.count == other.vector.count else {
-            return Float.infinity
+            return 0.0
         }
 
         // Handle empty vectors
