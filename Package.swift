@@ -13,7 +13,7 @@ let package = Package(
         .visionOS(.v1)
     ],
     products: [
-        // Core RAG library - cross-platform, no external dependencies
+        // Core RAG library with document loading capabilities
         .library(
             name: "Zoni",
             targets: ["Zoni"]
@@ -29,11 +29,18 @@ let package = Package(
             targets: ["ZoniApple"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
+        .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.20.0"),
+    ],
     targets: [
-        // Core target - no external dependencies
+        // Core target with document loading
         .target(
             name: "Zoni",
-            dependencies: [],
+            dependencies: [
+                .product(name: "SwiftSoup", package: "SwiftSoup"),
+                .product(name: "AsyncHTTPClient", package: "async-http-client"),
+            ],
             path: "Sources/Zoni"
         ),
         // Server extensions
