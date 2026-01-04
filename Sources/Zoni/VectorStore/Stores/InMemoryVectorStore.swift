@@ -178,6 +178,9 @@ public actor InMemoryVectorStore: VectorStore {
     /// try await store.add([chunk], embeddings: [embedding])
     /// ```
     public func add(_ chunks: [Chunk], embeddings: [Embedding]) async throws {
+        // Check for task cancellation early
+        try Task.checkCancellation()
+
         // Validate that counts match
         guard chunks.count == embeddings.count else {
             throw ZoniError.insertionFailed(
@@ -197,6 +200,11 @@ public actor InMemoryVectorStore: VectorStore {
         // Validate consistent dimensions and finite values across all embeddings
         if let firstDim = embeddings.first?.dimensions {
             for (index, embedding) in embeddings.enumerated() {
+                // Check for cancellation periodically during validation
+                if index % 100 == 0 {
+                    try Task.checkCancellation()
+                }
+
                 guard embedding.dimensions == firstDim else {
                     throw ZoniError.insertionFailed(
                         reason: "Inconsistent embedding dimensions: index \(index) has \(embedding.dimensions), expected \(firstDim)"
@@ -211,7 +219,8 @@ public actor InMemoryVectorStore: VectorStore {
             }
 
             // Check against expected dimensions (set on first add)
-            // This is atomic because we're in an actor
+            // This is atomic because we're in an actor - the check and set happen
+            // in a single isolated execution context, preventing race conditions
             if self.expectedDimensions == nil {
                 // First add - set expected dimensions atomically
                 self.expectedDimensions = firstDim
@@ -355,16 +364,12 @@ public actor InMemoryVectorStore: VectorStore {
     /// try await store.delete(filter: complexFilter)
     /// ```
     public func delete(filter: MetadataFilter) async throws {
-        // Find all chunk IDs that match the filter
-        let idsToDelete = chunks.values
-            .filter { filter.matches($0) }
-            .map { $0.id }
+        // Check for task cancellation before long-running operation
+        try Task.checkCancellation()
 
-        // Remove matched chunks and their embeddings
-        for id in idsToDelete {
-            chunks.removeValue(forKey: id)
-            embeddings.removeValue(forKey: id)
-        }
+        // More efficient: filter dictionaries directly without intermediate arrays
+        chunks = chunks.filter { !filter.matches($0.value) }
+        embeddings = embeddings.filter { chunks[$0.key] != nil }
     }
 
     /// Returns the total number of chunks stored in the vector store.
