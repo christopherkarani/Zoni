@@ -32,6 +32,10 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
         .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.20.0"),
+        // Phase 3: Vector Store dependencies
+        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.14.0"),
+        .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.20.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.25.0"),
     ],
     targets: [
         // Core target with document loading
@@ -40,13 +44,18 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftSoup", package: "SwiftSoup"),
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
+                .product(name: "SQLite", package: "SQLite.swift"),
             ],
             path: "Sources/Zoni"
         ),
         // Server extensions
         .target(
             name: "ZoniServer",
-            dependencies: ["Zoni"],
+            dependencies: [
+                "Zoni",
+                .product(name: "PostgresNIO", package: "postgres-nio"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl"),
+            ],
             path: "Sources/ZoniServer"
         ),
         // Apple platform extensions
