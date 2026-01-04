@@ -129,14 +129,14 @@ struct VectorMathTests {
         #expect(abs(result - 5.0) < 0.0001)
     }
 
-    @Test("Euclidean distance with dimension mismatch returns Float.infinity")
+    @Test("Euclidean distance with dimension mismatch returns 0.0")
     func testEuclideanDistanceDimensionMismatch() {
         let embedding1 = Embedding(vector: [1.0, 2.0, 3.0])
         let embedding2 = Embedding(vector: [1.0, 2.0])
 
         let result = embedding1.euclideanDistance(to: embedding2)
 
-        #expect(result == Float.infinity)
+        #expect(result == 0.0)
     }
 
     // MARK: - Magnitude Tests

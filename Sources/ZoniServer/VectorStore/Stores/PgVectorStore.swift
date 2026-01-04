@@ -1047,7 +1047,7 @@ public actor PgVectorStore: VectorStore {
             if isReservedField(field) {
                 return "\(sqlFieldName(field)) LIKE '%\(escapeLikePattern(suffix))' ESCAPE '\\'"
             }
-            return "metadata->>'\(escapeString(field))' LIKE '%\(escapeLikePattern(suffix))' ESCAPE '\\''"
+            return "metadata->>'\(escapeString(field))' LIKE '%\(escapeLikePattern(suffix))' ESCAPE '\\'"
 
         case .exists(let field):
             guard isValidFieldName(field) else { return "TRUE" }
@@ -1173,6 +1173,34 @@ public actor PgVectorStore: VectorStore {
         guard let url = URL(string: connectionString) else { return "postgres" }
         let path = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         return path.isEmpty ? "postgres" : path
+    }
+
+    // MARK: - Connection Lifecycle
+
+    /// Closes the PostgreSQL connection.
+    ///
+    /// This method should be called when you're done using the store to properly
+    /// release database resources. After calling `close()`, the store should not
+    /// be used for any further operations.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// let store = try await PgVectorStore.connect(...)
+    /// defer {
+    ///     Task {
+    ///         await store.close()
+    ///     }
+    /// }
+    ///
+    /// // Use the store...
+    /// try await store.add(chunks, embeddings: embeddings)
+    /// ```
+    ///
+    /// - Note: This is an async operation as it may need to finish any pending
+    ///   database operations before closing the connection.
+    public func close() async {
+        await connection.close()
     }
 }
 

@@ -95,6 +95,12 @@ public actor InMemoryVectorStore: VectorStore {
     /// Storage for embeddings indexed by the corresponding chunk ID.
     private var embeddings: [String: Embedding] = [:]
 
+    /// The expected number of dimensions for embeddings in this store.
+    ///
+    /// This is set on the first `add()` call and validated on subsequent calls
+    /// to ensure all embeddings have consistent dimensions.
+    private var expectedDimensions: Int?
+
     /// Maximum file size for loading (100 MB by default).
     ///
     /// This limit prevents loading excessively large files that could cause
@@ -154,11 +160,16 @@ public actor InMemoryVectorStore: VectorStore {
                 }
             }
 
-            // Also check against existing embeddings if any
-            if let existingDim = self.embeddings.values.first?.dimensions, existingDim != firstDim {
-                throw ZoniError.insertionFailed(
-                    reason: "Embedding dimensions (\(firstDim)) do not match existing embeddings (\(existingDim))"
-                )
+            // Check against expected dimensions (set on first add)
+            if let expectedDim = self.expectedDimensions {
+                guard firstDim == expectedDim else {
+                    throw ZoniError.insertionFailed(
+                        reason: "Embedding dimensions (\(firstDim)) do not match expected dimensions (\(expectedDim))"
+                    )
+                }
+            } else {
+                // First add - set expected dimensions
+                self.expectedDimensions = firstDim
             }
         }
 

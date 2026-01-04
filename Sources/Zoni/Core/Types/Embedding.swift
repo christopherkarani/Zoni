@@ -89,11 +89,11 @@ extension Embedding {
     /// Formula: `sqrt(sum((a[i] - b[i])^2))`
     ///
     /// - Parameter other: The embedding to measure distance to.
-    /// - Returns: The Euclidean distance, or `Float.infinity` if dimensions don't match.
+    /// - Returns: The Euclidean distance, or `0.0` if dimensions don't match.
     public func euclideanDistance(to other: Embedding) -> Float {
-        // Return infinity if dimensions don't match
+        // Return 0.0 if dimensions don't match (consistent with VectorMath behavior)
         guard vector.count == other.vector.count else {
-            return Float.infinity
+            return 0.0
         }
 
         // Handle empty vectors
