@@ -57,6 +57,9 @@ let package = Package(
         // Phase 5A: Cryptography for JWT validation
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
 
+        // Phase 5A: Logging for production deployments
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
+
         // Phase 5A: Vapor integration
         .package(url: "https://github.com/vapor/vapor.git", from: "4.90.0"),
         .package(url: "https://github.com/vapor/jwt.git", from: "4.0.0"),
@@ -90,6 +93,7 @@ let package = Package(
                 .product(name: "PostgresNIO", package: "postgres-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "Logging", package: "swift-log"),
             ],
             path: "Sources/ZoniServer"
         ),

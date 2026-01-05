@@ -4,27 +4,9 @@
 //
 // This file defines the JobExecutor actor that processes jobs from a queue,
 // handling concurrent execution, retries, progress updates, and graceful shutdown.
-//
-// ## Logging Note
-//
-// This implementation uses `print()` for logging. For production deployments,
-// replace `print()` statements with a proper logging framework such as:
-// - **SwiftLog**: Industry-standard logging API for Swift
-// - **OSLog**: Apple's unified logging system (recommended for Apple platforms)
-//
-// Example migration to SwiftLog:
-// ```swift
-// import Logging
-//
-// public actor JobExecutor {
-//     private let logger = Logger(label: "com.zoni.jobexecutor")
-//
-//     // Replace: print("[JobExecutor] ⚠️ Failed to update progress...")
-//     // With: logger.warning("Failed to update progress", metadata: ["jobId": .string(jobId)])
-// }
-// ```
 
 import Foundation
+import Logging
 
 // MARK: - JobExecutor
 
@@ -93,6 +75,9 @@ public actor JobExecutor {
 
     /// The background task running the processing loop.
     private var processingTask: Task<Void, Never>?
+
+    /// Logger for structured logging of job execution events.
+    private let logger = Logger(label: "com.zoni.jobexecutor")
 
     // MARK: - Initialization
 
@@ -215,14 +200,19 @@ public actor JobExecutor {
                 jobId: record.id,
                 tenantId: record.tenantId,
                 services: services,
-                reportProgress: { [queue] progress in
+                reportProgress: { [queue, logger] progress in
                     // Progress updates are best-effort - log failures but don't fail the job
                     do {
                         try await queue.updateProgress(record.id, progress: progress)
                     } catch {
-                        // Log the failure for observability/debugging
-                        // In production, consider using a structured logging framework
-                        print("[JobExecutor] ⚠️ Failed to update progress for job \(record.id): \(error.localizedDescription)")
+                        logger.warning(
+                            "Failed to update progress for job",
+                            metadata: [
+                                "jobId": .string(record.id),
+                                "progress": .stringConvertible(progress),
+                                "error": .string(error.localizedDescription)
+                            ]
+                        )
                     }
                 },
                 isCancelled: isCancelledClosure
@@ -262,8 +252,8 @@ public actor JobExecutor {
 
     /// Handles a job execution error.
     ///
-    /// If retries are available, the job is re-enqueued. Otherwise,
-    /// the error is stored and the job is marked as failed.
+    /// If retries are available, the job is re-enqueued with an incremented
+    /// retry count. Otherwise, the error is stored and the job is marked as failed.
     ///
     /// - Parameters:
     ///   - record: The job record that failed.
@@ -271,17 +261,11 @@ public actor JobExecutor {
     private func handleJobError(record: JobRecord, error: Error) async {
         // Check retry count
         if record.retryCount < record.maxRetries {
-            // Re-enqueue with incremented retry count
-            // The job will be picked up again by the processing loop
-            // For now, we update the status back to pending to allow retry
-            var updatedRecord = record
-            updatedRecord.retryCount += 1
-            updatedRecord.status = .pending
-
-            // Re-enqueue by updating status (the queue backend handles this)
-            // Note: A production implementation might want a dedicated retry method
-            try? await queue.updateStatus(record.id, status: .pending)
+            // Increment retry count and re-enqueue the job
+            let newRetryCount = record.retryCount + 1
+            try? await queue.updateRetryCount(record.id, retryCount: newRetryCount)
         } else {
+            // Max retries exceeded - mark as permanently failed
             try? await queue.storeError(record.id, error: error.localizedDescription)
             try? await queue.updateStatus(record.id, status: .failed)
         }

@@ -471,6 +471,17 @@ public protocol JobQueueBackend: Sendable {
     /// - Throws: `ZoniServerError.jobNotFound` if the job does not exist.
     func updateProgress(_ jobId: String, progress: Double) async throws
 
+    /// Update job retry count and status for retry attempts.
+    ///
+    /// This method increments the retry count and resets the job to pending status
+    /// so it can be picked up again by the executor.
+    ///
+    /// - Parameters:
+    ///   - jobId: The job identifier.
+    ///   - retryCount: The new retry count value.
+    /// - Throws: `ZoniServerError.jobNotFound` if the job does not exist.
+    func updateRetryCount(_ jobId: String, retryCount: Int) async throws
+
     /// Store job result upon completion.
     ///
     /// This also updates the job status to `.completed` and sets `completedAt`.

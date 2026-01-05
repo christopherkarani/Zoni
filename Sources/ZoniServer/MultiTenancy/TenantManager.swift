@@ -89,22 +89,41 @@ public actor TenantManager: TenantResolver {
     /// - Parameters:
     ///   - storage: The storage backend for tenant data persistence.
     ///   - jwtSecret: Optional secret for validating JWT token signatures.
-    ///     When `nil`, JWT signature validation is skipped and only the
-    ///     payload is used for tenant resolution.
+    ///     **⚠️ SECURITY WARNING**: When `nil`, JWT signature validation is **DISABLED**.
+    ///     This allows **ANY** JWT token to be accepted without verification, enabling
+    ///     token forgery attacks. **ONLY** use `nil` in development/testing environments.
+    ///     **ALWAYS** provide a secret (≥32 bytes) in production deployments.
     ///   - cacheTTL: The duration for which resolved tenants are cached.
     ///     Default is 5 minutes (300 seconds).
     ///   - maxCacheSize: Maximum number of entries in the cache. When this limit
     ///     is reached, the least recently used entries are evicted. Default is 10,000.
     ///
-    /// ## Example
-    /// ```swift
-    /// // Basic initialization
-    /// let manager = TenantManager(storage: myStorage)
+    /// ## Security Best Practices
     ///
-    /// // With JWT validation and custom cache TTL
-    /// let secureManager = TenantManager(
+    /// ### JWT Secret Requirements (Production)
+    /// - **REQUIRED**: Always provide `jwtSecret` in production
+    /// - **Minimum length**: 256 bits (32 bytes) for HS256 algorithm
+    /// - **Generation**: Use cryptographically secure random generator
+    /// - **Storage**: Store in environment variables, never in source code
+    /// - **Rotation**: Implement secret rotation strategy
+    ///
+    /// ### Example (Development - INSECURE)
+    /// ```swift
+    /// // ⚠️ DEVELOPMENT ONLY - No signature validation
+    /// let devManager = TenantManager(storage: myStorage, jwtSecret: nil)
+    /// ```
+    ///
+    /// ### Example (Production - SECURE)
+    /// ```swift
+    /// // ✅ PRODUCTION - With signature validation
+    /// guard let secret = ProcessInfo.processInfo.environment["JWT_SECRET"],
+    ///       secret.count >= 32 else {
+    ///     fatalError("JWT_SECRET environment variable must be set and ≥32 bytes")
+    /// }
+    ///
+    /// let prodManager = TenantManager(
     ///     storage: myStorage,
-    ///     jwtSecret: "my-secret-key",
+    ///     jwtSecret: secret,
     ///     cacheTTL: .minutes(10),
     ///     maxCacheSize: 5000
     /// )
@@ -465,43 +484,51 @@ public actor TenantManager: TenantResolver {
 extension TenantManager {
     /// Hashes an API key using SHA256.
     ///
-    /// **SECURITY WARNING**: This method is provided for backward compatibility
-    /// and basic hashing needs, but SHA256 alone is NOT recommended for password
-    /// or API key storage due to its speed (vulnerable to brute-force attacks).
+    /// **⚠️ CRITICAL SECURITY WARNING - DO NOT USE IN PRODUCTION ⚠️**
     ///
-    /// ## Recommended Approach for Production
+    /// This method is **DEPRECATED** and **INSECURE** for production use.
+    /// SHA256 is a fast cryptographic hash function, making it vulnerable to:
+    /// - **Brute-force attacks**: Modern GPUs can compute billions of SHA256 hashes per second
+    /// - **Rainbow table attacks**: Pre-computed hash tables can crack common keys instantly
+    /// - **No salt**: Without unique salts, identical keys produce identical hashes
     ///
-    /// For production systems, use a proper password hashing algorithm with
-    /// salt and work factor, such as:
-    /// - **Argon2** (recommended): Memory-hard, resistant to GPU attacks
-    /// - **bcrypt**: Industry standard, configurable work factor
-    /// - **scrypt**: Memory-hard, good alternative to Argon2
+    /// ## Required Action for Production
     ///
-    /// ### Example with bcrypt (using a third-party library):
+    /// **DO NOT USE THIS METHOD** in production systems. Use a proper password hashing
+    /// algorithm with salt and work factor:
+    ///
+    /// ### Recommended Alternatives
+    /// - **Argon2id** (BEST): Winner of Password Hashing Competition, memory-hard, GPU-resistant
+    /// - **bcrypt**: Industry standard, battle-tested, configurable work factor (minimum cost 12)
+    /// - **scrypt**: Memory-hard alternative, good choice if Argon2 unavailable
+    ///
+    /// ### Example with bcrypt (Swift implementation):
     /// ```swift
-    /// import BCrypt
+    /// // Add dependency: .package(url: "https://github.com/swift-server-community/swift-bcrypt.git", ...)
+    /// import Bcrypt
     ///
-    /// // Hash API key with bcrypt (cost factor 12)
-    /// let hashedKey = try BCrypt.hash(apiKey, cost: 12)
+    /// // Hash API key with bcrypt (cost factor 12 or higher)
+    /// let salt = try Bcrypt.Salt()
+    /// let hashedKey = try Bcrypt.hash(apiKey, salt: salt)
     ///
-    /// // Verify API key
-    /// let isValid = try BCrypt.verify(providedKey, created: hashedKey)
+    /// // Verify API key (constant-time comparison built-in)
+    /// let isValid = try Bcrypt.verify(providedKey, created: hashedKey)
     /// ```
     ///
     /// ### Migration Strategy
-    /// If you're currently using this SHA256 method, consider:
-    /// 1. Generate new API keys for all tenants
-    /// 2. Hash them with a proper algorithm (e.g., bcrypt)
-    /// 3. Invalidate old SHA256-hashed keys
+    /// If you're currently using this SHA256 method:
+    /// 1. **Immediately** rotate all API keys (generate new ones)
+    /// 2. Hash new keys with bcrypt/Argon2 (cost factor ≥ 12)
+    /// 3. Force users to use the new keys
+    /// 4. Delete all SHA256-hashed keys from your database
+    /// 5. Remove all calls to this deprecated method
     ///
     /// - Parameter apiKey: The API key to hash.
     /// - Returns: The hexadecimal representation of the SHA256 hash.
     ///
-    /// ## Example (Not Recommended for Production)
-    /// ```swift
-    /// let hashedKey = TenantManager.hashApiKey("sk-live-abc123")
-    /// // Store hashedKey in database instead of the raw API key
-    /// ```
+    /// - Warning: **DO NOT USE IN PRODUCTION**. This method exists only for
+    ///   backward compatibility and testing. It will be removed in a future version.
+    @available(*, deprecated, message: "INSECURE: Use bcrypt, Argon2, or scrypt instead. SHA256 is vulnerable to brute-force attacks.")
     public static func hashApiKey(_ apiKey: String) -> String {
         let data = Data(apiKey.utf8)
         let hash = SHA256.hash(data: data)

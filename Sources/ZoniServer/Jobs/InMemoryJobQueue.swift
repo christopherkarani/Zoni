@@ -127,6 +127,28 @@ public actor InMemoryJobQueue: JobQueueBackend {
         jobs[jobId] = record
     }
 
+    /// Updates the retry count and resets the job to pending status.
+    ///
+    /// This re-enqueues the job for another execution attempt.
+    ///
+    /// - Parameters:
+    ///   - jobId: The job identifier.
+    ///   - retryCount: The new retry count value.
+    public func updateRetryCount(_ jobId: String, retryCount: Int) async throws {
+        guard var record = jobs[jobId] else {
+            throw ZoniServerError.jobNotFound(jobId: jobId)
+        }
+        record.retryCount = retryCount
+        record.status = .pending
+
+        // Re-add to pending queue if not already there
+        if !pendingQueue.contains(jobId) {
+            insertInPriorityOrder(jobId, priority: record.priority)
+        }
+
+        jobs[jobId] = record
+    }
+
     /// Stores the result of a completed job.
     ///
     /// - Parameters:
