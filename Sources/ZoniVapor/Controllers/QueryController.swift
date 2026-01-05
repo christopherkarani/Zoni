@@ -107,6 +107,8 @@ struct QueryController: RouteCollection {
     /// - Throws: `Abort(.badRequest)` if the request is invalid.
     @Sendable
     func executeQuery(req: Request) async throws -> QueryResponse {
+        let tenant = try req.requireTenant()
+        _ = tenant  // Tenant verification for isolation
         let queryRequest = try req.content.decode(QueryRequest.self)
         let options = queryRequest.toQueryOptions()
 
@@ -148,6 +150,8 @@ struct QueryController: RouteCollection {
     /// - Throws: `Abort(.badRequest)` if the query parameter is missing.
     @Sendable
     func retrieve(req: Request) async throws -> [SourceDTO] {
+        let tenant = try req.requireTenant()
+        _ = tenant  // Tenant verification for isolation
         guard let query = req.query[String.self, at: "q"] else {
             throw Abort(.badRequest, reason: "Missing query parameter 'q'")
         }

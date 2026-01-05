@@ -52,6 +52,34 @@ public actor LoaderRegistry {
         return registry
     }()
 
+    /// Creates a default registry with all built-in loaders pre-registered.
+    ///
+    /// This method returns a new registry populated with loaders for:
+    /// - Text files (.txt, .text)
+    /// - Markdown files (.md, .markdown)
+    /// - HTML files (.html, .htm)
+    /// - JSON files (.json)
+    /// - CSV files (.csv, .tsv)
+    /// - PDF files (.pdf)
+    ///
+    /// - Returns: A registry with all built-in document loaders registered.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let registry = await LoaderRegistry.defaultRegistry()
+    /// let document = try await registry.load(from: fileURL)
+    /// ```
+    public static func defaultRegistry() async -> LoaderRegistry {
+        let registry = LoaderRegistry()
+        await registry.register(TextLoader())
+        await registry.register(MarkdownLoader())
+        await registry.register(HTMLLoader())
+        await registry.register(JSONLoader())
+        await registry.register(CSVLoader())
+        await registry.register(PDFLoader())
+        return registry
+    }
+
     // MARK: - Initialization
 
     /// Creates an empty registry.
@@ -73,6 +101,28 @@ public actor LoaderRegistry {
     /// ```
     public func register(_ loader: any DocumentLoader) {
         for ext in type(of: loader).supportedExtensions {
+            loaders[ext.lowercased()] = loader
+        }
+    }
+
+    /// Registers a loader for specific file extensions.
+    ///
+    /// Use this method to register a loader for custom extensions that differ
+    /// from its declared `supportedExtensions`. If a loader is already registered
+    /// for an extension, it will be overridden.
+    ///
+    /// - Parameters:
+    ///   - loader: The document loader to register.
+    ///   - extensions: The file extensions to associate with this loader.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let registry = LoaderRegistry()
+    /// // Register TextLoader for custom extensions
+    /// await registry.register(TextLoader(), for: ["log", "conf"])
+    /// ```
+    public func register(_ loader: any DocumentLoader, for extensions: [String]) {
+        for ext in extensions {
             loaders[ext.lowercased()] = loader
         }
     }
@@ -135,6 +185,29 @@ public actor LoaderRegistry {
         loader(for: url.pathExtension)
     }
 
+    // MARK: - Capability Checking
+
+    /// Checks if this registry can load the given URL.
+    ///
+    /// This method returns `true` if a loader is registered for the URL's
+    /// file extension.
+    ///
+    /// - Parameter url: The URL to check.
+    /// - Returns: `true` if a loader is registered for this URL's extension, `false` otherwise.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let registry = LoaderRegistry()
+    /// await registry.register(TextLoader())
+    ///
+    /// if await registry.canLoad(textFileURL) {
+    ///     let document = try await registry.load(from: textFileURL)
+    /// }
+    /// ```
+    public func canLoad(_ url: URL) -> Bool {
+        loader(for: url) != nil
+    }
+
     // MARK: - Document Loading
 
     /// Loads a document from URL using the appropriate loader.
@@ -163,7 +236,7 @@ public actor LoaderRegistry {
 
     // MARK: - Introspection
 
-    /// All currently registered extensions.
+    /// All currently registered extensions (property).
     ///
     /// Returns the set of all file extensions that have loaders registered.
     /// Extensions are returned in lowercase form.
@@ -173,7 +246,23 @@ public actor LoaderRegistry {
     /// let extensions = await registry.registeredExtensions
     /// // e.g., ["txt", "text", "md", "markdown"]
     /// ```
-    public var registeredExtensions: Set<String> {
+    public var registeredExtensionsSet: Set<String> {
+        Set(loaders.keys)
+    }
+
+    /// Returns all currently registered extensions.
+    ///
+    /// This method returns the set of all file extensions that have loaders registered.
+    /// Extensions are returned in lowercase form.
+    ///
+    /// - Returns: A set of all registered file extensions.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let extensions = await registry.registeredExtensions()
+    /// // e.g., ["txt", "text", "md", "markdown"]
+    /// ```
+    public func registeredExtensions() -> Set<String> {
         Set(loaders.keys)
     }
 }

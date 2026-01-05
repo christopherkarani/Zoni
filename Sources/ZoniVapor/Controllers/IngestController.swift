@@ -114,7 +114,7 @@ struct IngestController: RouteCollection {
     @Sendable
     func ingestDocuments(req: Request) async throws -> IngestResponse {
         let ingestRequest = try req.content.decode(IngestRequest.self)
-        let tenant = try req.tenant
+        let tenant = try req.requireTenant()
 
         // If async requested, create a job
         if ingestRequest.options?.async == true {
@@ -182,7 +182,7 @@ struct IngestController: RouteCollection {
     @Sendable
     func batchIngest(req: Request) async throws -> IngestResponse {
         let ingestRequest = try req.content.decode(IngestRequest.self)
-        let tenant = try req.tenant
+        let tenant = try req.requireTenant()
 
         let documents = ingestRequest.documents ?? []
         let job = IngestJob(
@@ -228,8 +228,11 @@ struct IngestController: RouteCollection {
             throw Abort(.badRequest, reason: "Missing document ID")
         }
 
-        // Implementation would delete document and its chunks from vector store
-        // For now, return success
+        let tenant = try req.requireTenant()
+
+        // TODO: When fully implemented, verify document belongs to tenant
+        // For now, just acknowledge tenant isolation requirement
+        _ = tenant
         _ = documentId
 
         return Response(

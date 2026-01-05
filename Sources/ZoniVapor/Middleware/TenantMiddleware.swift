@@ -28,7 +28,7 @@ import ZoniServer
 /// // Apply to a route group
 /// let protected = routes.grouped(TenantMiddleware())
 /// protected.get("query") { req in
-///     let tenant = req.tenant  // TenantContext available here
+///     let tenant = try req.requireTenant()  // TenantContext available here
 ///     // ...
 /// }
 /// ```
@@ -73,12 +73,15 @@ public struct TenantMiddleware: AsyncMiddleware {
 
         do {
             let tenant = try await request.application.zoni.tenantManager.resolve(from: authHeader)
-            request.tenant = tenant
+            request.setTenant(tenant)
         } catch let error as ZoniServerError {
             throw Abort(
                 HTTPResponseStatus(statusCode: error.httpStatusCode),
                 reason: error.errorDescription
             )
+        } catch {
+            request.logger.error("Unexpected error during tenant resolution: \(error)")
+            throw Abort(.internalServerError, reason: "Failed to resolve tenant context")
         }
 
         return try await next.respond(to: request)
@@ -108,20 +111,23 @@ extension Request {
     /// ## Example
     /// ```swift
     /// func handleQuery(req: Request) async throws -> Response {
-    ///     let tenant = try req.tenant
+    ///     let tenant = try req.requireTenant()
     ///     // Use tenant.tenantId, tenant.config, etc.
     /// }
     /// ```
-    public var tenant: TenantContext {
-        get throws {
-            guard let tenant = storage[TenantKey.self] else {
-                throw Abort(.internalServerError, reason: "Tenant not resolved. Ensure TenantMiddleware is applied to this route.")
-            }
-            return tenant
+    /// Gets the required tenant context for this request.
+    ///
+    /// - Throws: `Abort(.internalServerError)` if tenant is not resolved.
+    public func requireTenant() throws -> TenantContext {
+        guard let tenant = storage[TenantKey.self] else {
+            throw Abort(.internalServerError, reason: "Tenant not resolved. Ensure TenantMiddleware is applied to this route.")
         }
-        set {
-            storage[TenantKey.self] = newValue
-        }
+        return tenant
+    }
+
+    /// Sets the tenant context for this request.
+    public func setTenant(_ tenant: TenantContext) {
+        storage[TenantKey.self] = tenant
     }
 
     /// The optional tenant context for this request.
