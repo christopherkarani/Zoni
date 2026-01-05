@@ -1254,7 +1254,7 @@ public actor PgVectorStore: VectorStore {
     /// - Note: This is an async operation as it may need to finish any pending
     ///   database operations before closing the connection.
     public func close() async {
-        await connection.close()
+        try? await connection.close()
     }
 }
 
