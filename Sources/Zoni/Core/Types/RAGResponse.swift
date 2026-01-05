@@ -102,6 +102,12 @@ public struct QueryOptions: Sendable, Equatable {
     /// Only chunks matching the filter will be considered.
     public var filter: MetadataFilter?
 
+    /// The maximum number of tokens to include in the context.
+    ///
+    /// This limits the combined size of retrieved chunks passed to the LLM.
+    /// Defaults to 4096 tokens.
+    public var maxContextTokens: Int
+
     /// Creates new query options.
     ///
     /// - Parameters:
@@ -115,13 +121,15 @@ public struct QueryOptions: Sendable, Equatable {
         includeMetadata: Bool = true,
         systemPrompt: String? = nil,
         temperature: Double? = nil,
-        filter: MetadataFilter? = nil
+        filter: MetadataFilter? = nil,
+        maxContextTokens: Int = 4096
     ) {
         self.retrievalLimit = retrievalLimit
         self.includeMetadata = includeMetadata
         self.systemPrompt = systemPrompt
         self.temperature = temperature
         self.filter = filter
+        self.maxContextTokens = maxContextTokens
     }
 
     /// Default query options with standard settings.
@@ -161,6 +169,9 @@ public struct RAGResponseMetadata: Sendable, Equatable {
     /// The model identifier used for generation.
     public var model: String?
 
+    /// The number of chunks retrieved from the vector store.
+    public var chunksRetrieved: Int?
+
     /// Creates new response metadata.
     ///
     /// - Parameters:
@@ -176,7 +187,8 @@ public struct RAGResponseMetadata: Sendable, Equatable {
         generationTime: Duration? = nil,
         totalTime: Duration? = nil,
         tokensUsed: Int? = nil,
-        model: String? = nil
+        model: String? = nil,
+        chunksRetrieved: Int? = nil
     ) {
         self.queryTime = queryTime
         self.retrievalTime = retrievalTime
@@ -184,6 +196,7 @@ public struct RAGResponseMetadata: Sendable, Equatable {
         self.totalTime = totalTime
         self.tokensUsed = tokensUsed
         self.model = model
+        self.chunksRetrieved = chunksRetrieved
     }
 }
 
