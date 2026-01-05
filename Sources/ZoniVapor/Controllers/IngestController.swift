@@ -114,7 +114,7 @@ struct IngestController: RouteCollection {
     @Sendable
     func ingestDocuments(req: Request) async throws -> IngestResponse {
         let ingestRequest = try req.content.decode(IngestRequest.self)
-        let tenant = req.tenant
+        let tenant = try req.tenant
 
         // If async requested, create a job
         if ingestRequest.options?.async == true {
@@ -182,7 +182,7 @@ struct IngestController: RouteCollection {
     @Sendable
     func batchIngest(req: Request) async throws -> IngestResponse {
         let ingestRequest = try req.content.decode(IngestRequest.self)
-        let tenant = req.tenant
+        let tenant = try req.tenant
 
         let documents = ingestRequest.documents ?? []
         let job = IngestJob(

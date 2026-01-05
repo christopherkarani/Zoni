@@ -85,7 +85,7 @@ struct IndexController: RouteCollection {
     func listIndices(req: Request) async throws -> [IndexInfo] {
         // In a full implementation, this would query the vector store
         // for all indices belonging to the tenant
-        _ = req.tenant
+        _ = try req.tenant
 
         // Placeholder response
         return []
@@ -124,7 +124,7 @@ struct IndexController: RouteCollection {
     @Sendable
     func createIndex(req: Request) async throws -> IndexInfo {
         let createRequest = try req.content.decode(CreateIndexRequest.self)
-        let tenant = req.tenant
+        let tenant = try req.tenant
 
         // Apply tenant prefix to index name
         let prefixedName = tenant.config.indexPrefix + createRequest.name
@@ -171,7 +171,7 @@ struct IndexController: RouteCollection {
             throw Abort(.badRequest, reason: "Missing index name")
         }
 
-        let tenant = req.tenant
+        let tenant = try req.tenant
 
         // Apply tenant prefix to index name
         let prefixedName = tenant.config.indexPrefix + name
@@ -211,7 +211,7 @@ struct IndexController: RouteCollection {
             throw Abort(.badRequest, reason: "Missing index name")
         }
 
-        let tenant = req.tenant
+        let tenant = try req.tenant
 
         // Apply tenant prefix to index name
         let prefixedName = tenant.config.indexPrefix + name

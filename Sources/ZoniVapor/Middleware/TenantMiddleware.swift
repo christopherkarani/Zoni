@@ -101,20 +101,21 @@ extension Request {
     /// The tenant context for this request.
     ///
     /// Accessing this property before the `TenantMiddleware` has run
-    /// will cause a fatal error. Always use this property in routes
-    /// that are protected by the middleware.
+    /// will throw an Abort error. Always use this property in routes
+    /// that are protected by the middleware, or use `tenantOptional`
+    /// for optional access.
     ///
     /// ## Example
     /// ```swift
     /// func handleQuery(req: Request) async throws -> Response {
-    ///     let tenant = req.tenant
+    ///     let tenant = try req.tenant
     ///     // Use tenant.tenantId, tenant.config, etc.
     /// }
     /// ```
     public var tenant: TenantContext {
-        get {
+        get throws {
             guard let tenant = storage[TenantKey.self] else {
-                fatalError("Tenant not resolved. Ensure TenantMiddleware is applied to this route.")
+                throw Abort(.internalServerError, reason: "Tenant not resolved. Ensure TenantMiddleware is applied to this route.")
             }
             return tenant
         }

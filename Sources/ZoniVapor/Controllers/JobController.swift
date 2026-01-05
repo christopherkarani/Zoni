@@ -83,7 +83,7 @@ struct JobController: RouteCollection {
     /// - Returns: An array of job status responses.
     @Sendable
     func listJobs(req: Request) async throws -> [JobStatusResponse] {
-        let tenant = req.tenant
+        let tenant = try req.tenant
         let status = req.query[String.self, at: "status"].flatMap { JobStatus(rawValue: $0) }
         let limit = min(req.query[Int.self, at: "limit"] ?? 50, 100)
 
@@ -135,7 +135,7 @@ struct JobController: RouteCollection {
         }
 
         // Verify tenant owns this job
-        if record.tenantId != req.tenant.tenantId {
+        if record.tenantId != try req.tenant.tenantId {
             throw Abort(.notFound, reason: "Job not found")
         }
 
@@ -170,7 +170,7 @@ struct JobController: RouteCollection {
 
         // Verify job exists and belongs to tenant
         if let record = try await req.application.zoni.jobQueue.getJob(jobId) {
-            if record.tenantId != req.tenant.tenantId {
+            if record.tenantId != try req.tenant.tenantId {
                 throw Abort(.notFound, reason: "Job not found")
             }
         }

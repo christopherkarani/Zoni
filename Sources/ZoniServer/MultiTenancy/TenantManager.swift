@@ -65,6 +65,9 @@ public actor TenantManager: TenantResolver {
     /// Optional secret for JWT signature validation.
     private let jwtSecret: String?
 
+    /// Maximum number of entries in the cache. Default is 10,000.
+    private let maxCacheSize: Int
+
     // MARK: - Nested Types
 
     /// A cached tenant context with expiration information.
@@ -74,6 +77,9 @@ public actor TenantManager: TenantResolver {
 
         /// The instant at which this cache entry expires.
         let expiresAt: ContinuousClock.Instant
+
+        /// The last time this cache entry was accessed (for LRU eviction).
+        var lastAccessed: ContinuousClock.Instant
     }
 
     // MARK: - Initialization
@@ -87,6 +93,8 @@ public actor TenantManager: TenantResolver {
     ///     payload is used for tenant resolution.
     ///   - cacheTTL: The duration for which resolved tenants are cached.
     ///     Default is 5 minutes (300 seconds).
+    ///   - maxCacheSize: Maximum number of entries in the cache. When this limit
+    ///     is reached, the least recently used entries are evicted. Default is 10,000.
     ///
     /// ## Example
     /// ```swift
@@ -97,17 +105,20 @@ public actor TenantManager: TenantResolver {
     /// let secureManager = TenantManager(
     ///     storage: myStorage,
     ///     jwtSecret: "my-secret-key",
-    ///     cacheTTL: .minutes(10)
+    ///     cacheTTL: .minutes(10),
+    ///     maxCacheSize: 5000
     /// )
     /// ```
     public init(
         storage: any TenantStorage,
         jwtSecret: String? = nil,
-        cacheTTL: Duration = .seconds(300)
+        cacheTTL: Duration = .seconds(300),
+        maxCacheSize: Int = 10_000
     ) {
         self.storage = storage
         self.jwtSecret = jwtSecret
         self.cacheTTL = cacheTTL
+        self.maxCacheSize = maxCacheSize
     }
 
     // MARK: - TenantResolver Protocol
@@ -175,7 +186,10 @@ public actor TenantManager: TenantResolver {
     /// ```
     public func resolve(from apiKey: String) async throws -> TenantContext {
         // Check cache for valid entry
-        if let cached = cache[apiKey], cached.expiresAt > .now {
+        if var cached = cache[apiKey], cached.expiresAt > .now {
+            // Update last accessed time for LRU
+            cached.lastAccessed = .now
+            cache[apiKey] = cached
             return cached.context
         }
 
@@ -185,10 +199,15 @@ public actor TenantManager: TenantResolver {
         }
 
         // Cache the result
+        let now = ContinuousClock.Instant.now
         cache[apiKey] = CachedTenant(
             context: context,
-            expiresAt: .now + cacheTTL
+            expiresAt: now + cacheTTL,
+            lastAccessed: now
         )
+
+        // Enforce cache size limit
+        evictCacheIfNeeded()
 
         return context
     }
@@ -222,7 +241,10 @@ public actor TenantManager: TenantResolver {
     ///   from the token does not exist.
     private func resolveFromJWT(_ token: String) async throws -> TenantContext {
         // Check cache first
-        if let cached = cache[token], cached.expiresAt > .now {
+        if var cached = cache[token], cached.expiresAt > .now {
+            // Update last accessed time for LRU
+            cached.lastAccessed = .now
+            cache[token] = cached
             return cached.context
         }
 
@@ -277,10 +299,15 @@ public actor TenantManager: TenantResolver {
         }
 
         // Cache the result
+        let now = ContinuousClock.Instant.now
         cache[token] = CachedTenant(
             context: context,
-            expiresAt: .now + cacheTTL
+            expiresAt: now + cacheTTL,
+            lastAccessed: now
         )
+
+        // Enforce cache size limit
+        evictCacheIfNeeded()
 
         return context
     }
@@ -336,6 +363,26 @@ public actor TenantManager: TenantResolver {
         cache = cache.filter { $0.value.expiresAt > now }
     }
 
+    /// Evicts least recently used cache entries if the cache exceeds maxCacheSize.
+    ///
+    /// This method ensures the cache doesn't grow unbounded by removing the
+    /// oldest entries (by last access time) when the limit is reached.
+    /// Approximately 10% of the cache is evicted when the limit is exceeded.
+    private func evictCacheIfNeeded() {
+        guard cache.count > maxCacheSize else { return }
+
+        // Calculate how many entries to remove (10% of cache size)
+        let targetRemovalCount = max(1, maxCacheSize / 10)
+
+        // Sort by last accessed time (oldest first) and remove the oldest entries
+        let sortedByAge = cache.sorted { $0.value.lastAccessed < $1.value.lastAccessed }
+        let keysToRemove = sortedByAge.prefix(targetRemovalCount).map { $0.key }
+
+        for key in keysToRemove {
+            cache.removeValue(forKey: key)
+        }
+    }
+
     /// Returns the current number of cached entries.
     ///
     /// - Returns: The number of entries currently in the cache.
@@ -380,7 +427,7 @@ public actor TenantManager: TenantResolver {
     ///
     /// ## Security Notes
     /// - Uses HMAC-SHA256 as specified by JWT standard (HS256 algorithm)
-    /// - Comparison is constant-time to prevent timing attacks
+    /// - Uses isValidAuthenticationCode for constant-time comparison to prevent timing attacks
     /// - The secret should be at least 256 bits (32 bytes) for security
     private func validateJWTSignature(
         header: String,
@@ -408,9 +455,8 @@ public actor TenantManager: TenantResolver {
         // Compute the expected signature using HMAC-SHA256
         let computedSignature = HMAC<SHA256>.authenticationCode(for: messageData, using: key)
 
-        // Compare signatures using constant-time comparison
-        // CryptoKit's Data comparison for HMAC codes is already constant-time
-        return Data(computedSignature) == signatureData
+        // Use isValidAuthenticationCode for constant-time comparison to prevent timing attacks
+        return HMAC<SHA256>.isValidAuthenticationCode(signatureData, authenticating: messageData, using: key)
     }
 }
 
@@ -419,13 +465,39 @@ public actor TenantManager: TenantResolver {
 extension TenantManager {
     /// Hashes an API key using SHA256.
     ///
-    /// This utility method can be used by `TenantStorage` implementations
-    /// to hash API keys before storage or comparison.
+    /// **SECURITY WARNING**: This method is provided for backward compatibility
+    /// and basic hashing needs, but SHA256 alone is NOT recommended for password
+    /// or API key storage due to its speed (vulnerable to brute-force attacks).
+    ///
+    /// ## Recommended Approach for Production
+    ///
+    /// For production systems, use a proper password hashing algorithm with
+    /// salt and work factor, such as:
+    /// - **Argon2** (recommended): Memory-hard, resistant to GPU attacks
+    /// - **bcrypt**: Industry standard, configurable work factor
+    /// - **scrypt**: Memory-hard, good alternative to Argon2
+    ///
+    /// ### Example with bcrypt (using a third-party library):
+    /// ```swift
+    /// import BCrypt
+    ///
+    /// // Hash API key with bcrypt (cost factor 12)
+    /// let hashedKey = try BCrypt.hash(apiKey, cost: 12)
+    ///
+    /// // Verify API key
+    /// let isValid = try BCrypt.verify(providedKey, created: hashedKey)
+    /// ```
+    ///
+    /// ### Migration Strategy
+    /// If you're currently using this SHA256 method, consider:
+    /// 1. Generate new API keys for all tenants
+    /// 2. Hash them with a proper algorithm (e.g., bcrypt)
+    /// 3. Invalidate old SHA256-hashed keys
     ///
     /// - Parameter apiKey: The API key to hash.
     /// - Returns: The hexadecimal representation of the SHA256 hash.
     ///
-    /// ## Example
+    /// ## Example (Not Recommended for Production)
     /// ```swift
     /// let hashedKey = TenantManager.hashApiKey("sk-live-abc123")
     /// // Store hashedKey in database instead of the raw API key

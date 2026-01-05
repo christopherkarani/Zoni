@@ -4,6 +4,25 @@
 //
 // This file defines the JobExecutor actor that processes jobs from a queue,
 // handling concurrent execution, retries, progress updates, and graceful shutdown.
+//
+// ## Logging Note
+//
+// This implementation uses `print()` for logging. For production deployments,
+// replace `print()` statements with a proper logging framework such as:
+// - **SwiftLog**: Industry-standard logging API for Swift
+// - **OSLog**: Apple's unified logging system (recommended for Apple platforms)
+//
+// Example migration to SwiftLog:
+// ```swift
+// import Logging
+//
+// public actor JobExecutor {
+//     private let logger = Logger(label: "com.zoni.jobexecutor")
+//
+//     // Replace: print("[JobExecutor] ⚠️ Failed to update progress...")
+//     // With: logger.warning("Failed to update progress", metadata: ["jobId": .string(jobId)])
+// }
+// ```
 
 import Foundation
 
@@ -185,6 +204,12 @@ public actor JobExecutor {
             // Deserialize job
             let job = try await JobRegistry.shared.deserialize(record)
 
+            // Capture cancellation state synchronously to avoid actor re-entrancy
+            let isCancelledClosure: @Sendable () -> Bool = { [cancelledJobs] in
+                // Capture the current cancelled state synchronously
+                cancelledJobs.contains(record.id)
+            }
+
             // Create execution context
             let context = JobExecutionContext(
                 jobId: record.id,
@@ -200,13 +225,7 @@ public actor JobExecutor {
                         print("[JobExecutor] ⚠️ Failed to update progress for job \(record.id): \(error.localizedDescription)")
                     }
                 },
-                isCancelled: { [weak self] in
-                    // If the executor is deallocated, return false to allow the job
-                    // to complete rather than cancelling it unexpectedly.
-                    // This is safer than returning true, which could cause data loss.
-                    guard let self else { return false }
-                    return await self.isJobCancelled(record.id)
-                }
+                isCancelled: isCancelledClosure
             )
 
             // Execute
