@@ -222,7 +222,9 @@ public actor PineconeStore: VectorStore {
         guard !chunks.isEmpty else { return }
 
         // Build the upsert request
-        let url = URL(string: "\(indexHost)/vectors/upsert")!
+        guard let url = URL(string: "\(indexHost)/vectors/upsert") else {
+            throw ZoniError.insertionFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -314,7 +316,9 @@ public actor PineconeStore: VectorStore {
         }
 
         // Build the query request
-        let url = URL(string: "\(indexHost)/query")!
+        guard let url = URL(string: "\(indexHost)/query") else {
+            throw ZoniError.searchFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -382,7 +386,9 @@ public actor PineconeStore: VectorStore {
         guard !ids.isEmpty else { return }
 
         // Build the delete request
-        let url = URL(string: "\(indexHost)/vectors/delete")!
+        guard let url = URL(string: "\(indexHost)/vectors/delete") else {
+            throw ZoniError.insertionFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -437,7 +443,9 @@ public actor PineconeStore: VectorStore {
     ///   Pinecone processes these deletions asynchronously.
     public func delete(filter: MetadataFilter) async throws {
         // Build the delete request
-        let url = URL(string: "\(indexHost)/vectors/delete")!
+        guard let url = URL(string: "\(indexHost)/vectors/delete") else {
+            throw ZoniError.insertionFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -486,7 +494,12 @@ public actor PineconeStore: VectorStore {
     /// ```
     public func count() async throws -> Int {
         // Build the describe_index_stats request
-        let url = URL(string: "\(indexHost)/describe_index_stats")!
+        guard let url = URL(string: "\(indexHost)/describe_index_stats") else {
+            throw ZoniError.vectorStoreConnectionFailed(
+                store: name,
+                reason: "Invalid Pinecone URL: \(indexHost)"
+            )
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
