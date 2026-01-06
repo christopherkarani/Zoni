@@ -80,7 +80,11 @@ public struct TenantMiddleware: AsyncMiddleware {
                 reason: error.errorDescription
             )
         } catch {
-            request.logger.error("Unexpected error during tenant resolution: \(error)")
+            request.logger.error("Unexpected error during tenant resolution", metadata: [
+                "error": "\(error)",
+                "error_type": "\(type(of: error))",
+                "auth_header_present": "\(authHeader != nil)"
+            ])
             throw Abort(.internalServerError, reason: "Failed to resolve tenant context")
         }
 

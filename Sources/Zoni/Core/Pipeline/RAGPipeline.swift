@@ -267,12 +267,13 @@ public actor RAGPipeline {
                 documentId: document.id
             ))
         } catch {
-            // Report failure before re-throwing
+            // Report failure with error details before re-throwing
             progressHandler?(IngestionProgress(
                 phase: .failed,
                 current: 0,
                 total: 0,
-                documentId: document.id
+                documentId: document.id,
+                message: error.localizedDescription
             ))
             throw error
         }
