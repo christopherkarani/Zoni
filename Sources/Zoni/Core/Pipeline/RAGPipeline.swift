@@ -68,8 +68,51 @@ public actor RAGPipeline {
     /// The chunking strategy for splitting documents into smaller pieces.
     private let chunker: any ChunkingStrategy
 
-    /// Registered document loaders for handling various file formats.
-    private var loaders: [any DocumentLoader]
+    /// Registry for document loaders handling various file formats.
+    private let loaderRegistry: LoaderRegistry
+
+    /// Tracks ingested document count for statistics.
+    private var documentCount: Int = 0
+
+    /// Callback invoked during document ingestion progress.
+    ///
+    /// Set this property to receive progress updates during ingestion operations.
+    /// The callback is invoked at each phase: chunking, embedding, storing, and complete.
+    ///
+    /// Example:
+    /// ```swift
+    /// await pipeline.setIngestionProgressHandler { progress in
+    ///     print("Phase: \(progress.phase), \(progress.current)/\(progress.total)")
+    /// }
+    /// ```
+    private var _onIngestionProgress: (@Sendable (IngestionProgress) -> Void)?
+
+    /// Callback invoked during query progress.
+    ///
+    /// Set this property to receive progress updates during query operations.
+    /// The callback is invoked at each phase: retrieving, generating, and complete.
+    ///
+    /// Example:
+    /// ```swift
+    /// await pipeline.setQueryProgressHandler { progress in
+    ///     print("Phase: \(progress.phase)")
+    /// }
+    /// ```
+    private var _onQueryProgress: (@Sendable (QueryProgress) -> Void)?
+
+    /// Sets the ingestion progress handler.
+    ///
+    /// - Parameter handler: The progress handler to invoke during ingestion operations.
+    public func setIngestionProgressHandler(_ handler: (@Sendable (IngestionProgress) -> Void)?) {
+        _onIngestionProgress = handler
+    }
+
+    /// Sets the query progress handler.
+    ///
+    /// - Parameter handler: The progress handler to invoke during query operations.
+    public func setQueryProgressHandler(_ handler: (@Sendable (QueryProgress) -> Void)?) {
+        _onQueryProgress = handler
+    }
 
     // MARK: - Initialization
 
@@ -80,21 +123,21 @@ public actor RAGPipeline {
     ///   - vectorStore: The vector store for storing and searching embeddings.
     ///   - llm: The LLM provider for generating responses.
     ///   - chunker: The chunking strategy for splitting documents.
-    ///   - loaders: Document loaders for various file formats. Defaults to empty.
+    ///   - loaderRegistry: Registry for document loaders. Defaults to an empty registry.
     ///   - configuration: Pipeline configuration. Defaults to `.default`.
     public init(
         embedding: any EmbeddingProvider,
         vectorStore: any VectorStore,
         llm: any LLMProvider,
         chunker: any ChunkingStrategy,
-        loaders: [any DocumentLoader] = [],
+        loaderRegistry: LoaderRegistry = LoaderRegistry(),
         configuration: RAGConfiguration = .default
     ) {
         self.embeddingProvider = embedding
         self.vectorStore = vectorStore
         self.llmProvider = llm
         self.chunker = chunker
-        self.loaders = loaders
+        self.loaderRegistry = loaderRegistry
         self.configuration = configuration
     }
 
@@ -108,7 +151,132 @@ public actor RAGPipeline {
     /// - Parameter document: The document to ingest.
     /// - Throws: `ZoniError` if chunking, embedding, or storage fails.
     public func ingest(_ document: Document) async throws {
-        fatalError("Not implemented")
+        // Capture handler at start to prevent mid-operation changes
+        let progressHandler = _onIngestionProgress
+
+        do {
+            // Report validation phase starting
+            progressHandler?(IngestionProgress(
+                phase: .validating,
+                current: 0,
+                total: 1,
+                documentId: document.id
+            ))
+
+            // Validate document has content
+            guard !document.content.isEmpty else {
+                progressHandler?(IngestionProgress(
+                    phase: .complete,
+                    current: 0,
+                    total: 0,
+                    documentId: document.id
+                ))
+                return
+            }
+
+            // Report validation phase complete
+            progressHandler?(IngestionProgress(
+                phase: .validating,
+                current: 1,
+                total: 1,
+                documentId: document.id
+            ))
+
+            // Report chunking phase starting
+            progressHandler?(IngestionProgress(
+                phase: .chunking,
+                current: 0,
+                total: 1,
+                documentId: document.id
+            ))
+
+            // Chunk the document
+            let chunks = try await chunker.chunk(document)
+            guard !chunks.isEmpty else {
+                progressHandler?(IngestionProgress(
+                    phase: .complete,
+                    current: 0,
+                    total: 0,
+                    documentId: document.id
+                ))
+                return
+            }
+
+            // Report chunking phase complete
+            progressHandler?(IngestionProgress(
+                phase: .chunking,
+                current: 1,
+                total: 1,
+                documentId: document.id
+            ))
+
+            // Report embedding phase starting
+            progressHandler?(IngestionProgress(
+                phase: .embedding,
+                current: 0,
+                total: chunks.count,
+                documentId: document.id
+            ))
+
+            // Generate embeddings for all chunks
+            let texts = chunks.map(\.content)
+            let embeddings = try await embeddingProvider.embed(texts)
+
+            // Validate embedding count matches chunks
+            guard embeddings.count == chunks.count else {
+                throw ZoniError.embeddingFailed(
+                    reason: "Embedding count mismatch: expected \(chunks.count), got \(embeddings.count)"
+                )
+            }
+
+            // Report embedding phase complete
+            progressHandler?(IngestionProgress(
+                phase: .embedding,
+                current: chunks.count,
+                total: chunks.count,
+                documentId: document.id
+            ))
+
+            // Report storing phase starting
+            progressHandler?(IngestionProgress(
+                phase: .storing,
+                current: 0,
+                total: chunks.count,
+                documentId: document.id
+            ))
+
+            // Store chunks and embeddings in vector store
+            try await vectorStore.add(chunks, embeddings: embeddings)
+
+            // Track the document count
+            documentCount += 1
+
+            // Report storing phase complete
+            progressHandler?(IngestionProgress(
+                phase: .storing,
+                current: chunks.count,
+                total: chunks.count,
+                documentId: document.id
+            ))
+
+            // Report completion
+            progressHandler?(IngestionProgress(
+                phase: .complete,
+                current: chunks.count,
+                total: chunks.count,
+                documentId: document.id
+            ))
+        } catch {
+            // Report failure with error details before re-throwing
+            progressHandler?(IngestionProgress(
+                phase: .failed,
+                current: 0,
+                total: 0,
+                documentId: document.id,
+                message: error.localizedDescription
+            ))
+            throw error
+        }
     }
 
     /// Ingests multiple documents into the knowledge base.
@@ -119,7 +287,9 @@ public actor RAGPipeline {
     /// - Parameter documents: The documents to ingest.
     /// - Throws: `ZoniError` if any document fails to process.
     public func ingest(_ documents: [Document]) async throws {
-        fatalError("Not implemented")
+        for document in documents {
+            try await ingest(document)
+        }
     }
 
     /// Ingests a document from a URL using registered document loaders.
@@ -131,7 +301,11 @@ public actor RAGPipeline {
     /// - Throws: `ZoniError.unsupportedFileType` if no loader handles the file type,
     ///           or other `ZoniError` if loading or ingestion fails.
     public func ingest(from url: URL) async throws {
-        fatalError("Not implemented")
+        guard await loaderRegistry.canLoad(url) else {
+            throw ZoniError.unsupportedFileType(url.pathExtension)
+        }
+        let document = try await loaderRegistry.load(from: url)
+        try await ingest(document)
     }
 
     /// Ingests all documents from a directory.
@@ -144,7 +318,45 @@ public actor RAGPipeline {
     ///   - recursive: Whether to scan subdirectories. Defaults to `true`.
     /// - Throws: `ZoniError` if directory access or document ingestion fails.
     public func ingest(directory: URL, recursive: Bool = true) async throws {
-        fatalError("Not implemented")
+        // Collect file URLs synchronously using nonisolated helper
+        let fileURLs = try Self.enumerateDirectory(directory, recursive: recursive)
+
+        // Process files asynchronously
+        for fileURL in fileURLs {
+            guard await loaderRegistry.canLoad(fileURL) else { continue }
+            try await ingest(from: fileURL)
+        }
+    }
+
+    /// Enumerates files in a directory synchronously.
+    ///
+    /// This nonisolated helper avoids async iterator issues with FileManager.
+    private nonisolated static func enumerateDirectory(_ directory: URL, recursive: Bool) throws -> [URL] {
+        let fileManager = FileManager.default
+        let options: FileManager.DirectoryEnumerationOptions = recursive
+            ? []
+            : [.skipsSubdirectoryDescendants]
+
+        guard let enumerator = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: options
+        ) else {
+            throw ZoniError.loadingFailed(
+                url: directory,
+                reason: "Cannot enumerate directory: \(directory.path)"
+            )
+        }
+
+        var fileURLs: [URL] = []
+        for case let fileURL as URL in enumerator {
+            // Filter to only include regular files
+            let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey])
+            if resourceValues?.isRegularFile == true {
+                fileURLs.append(fileURL)
+            }
+        }
+        return fileURLs
     }
 
     // MARK: - Query
@@ -161,7 +373,33 @@ public actor RAGPipeline {
     /// - Returns: A `RAGResponse` containing the answer and source documents.
     /// - Throws: `ZoniError` if retrieval or generation fails.
     public func query(_ question: String, options: QueryOptions = .default) async throws -> RAGResponse {
-        fatalError("Not implemented")
+        // Capture handler at start to prevent mid-operation changes
+        let progressHandler = _onQueryProgress
+
+        do {
+            // Report retrieving phase
+            progressHandler?(QueryProgress(phase: .retrieving, message: nil))
+
+            let retriever = VectorRetriever(vectorStore: vectorStore, embeddingProvider: embeddingProvider)
+            let engine = QueryEngine(retriever: retriever, llmProvider: llmProvider)
+
+            // Report generating phase
+            progressHandler?(QueryProgress(phase: .generating, message: nil))
+
+            let response = try await engine.query(question, options: options)
+
+            // Report completion
+            progressHandler?(QueryProgress(phase: .complete, message: nil))
+
+            return response
+        } catch {
+            // Report failure before re-throwing
+            progressHandler?(QueryProgress(
+                phase: .failed,
+                message: error.localizedDescription
+            ))
+            throw error
+        }
     }
 
     /// Streams a query response for real-time display.
@@ -175,9 +413,9 @@ public actor RAGPipeline {
     /// - Returns: An async stream of `RAGStreamEvent` objects representing
     ///            the progress of retrieval and generation.
     public func streamQuery(_ question: String, options: QueryOptions = .default) -> AsyncThrowingStream<RAGStreamEvent, Error> {
-        AsyncThrowingStream { continuation in
-            continuation.finish(throwing: ZoniError.missingRequiredComponent("RAGPipeline.streamQuery not implemented"))
-        }
+        let retriever = VectorRetriever(vectorStore: vectorStore, embeddingProvider: embeddingProvider)
+        let engine = QueryEngine(retriever: retriever, llmProvider: llmProvider)
+        return engine.streamQuery(question, options: options)
     }
 
     // MARK: - Retrieval Only
@@ -194,7 +432,8 @@ public actor RAGPipeline {
     /// - Returns: An array of `RetrievalResult` objects sorted by relevance.
     /// - Throws: `ZoniError` if embedding or search fails.
     public func retrieve(_ query: String, limit: Int = 5, filter: MetadataFilter? = nil) async throws -> [RetrievalResult] {
-        fatalError("Not implemented")
+        let retriever = VectorRetriever(vectorStore: vectorStore, embeddingProvider: embeddingProvider)
+        return try await retriever.retrieve(query: query, limit: limit, filter: filter)
     }
 
     // MARK: - Management
@@ -206,7 +445,14 @@ public actor RAGPipeline {
     /// - Returns: A `RAGStatistics` object containing counts and configuration info.
     /// - Throws: `ZoniError` if statistics cannot be retrieved.
     public func statistics() async throws -> RAGStatistics {
-        fatalError("Not implemented")
+        let chunkCount = try await vectorStore.count()
+        return RAGStatistics(
+            documentCount: documentCount,
+            chunkCount: chunkCount,
+            embeddingDimensions: embeddingProvider.dimensions,
+            vectorStoreName: vectorStore.name,
+            embeddingProviderName: embeddingProvider.name
+        )
     }
 
     /// Clears all documents from the vector store.
@@ -215,16 +461,19 @@ public actor RAGPipeline {
     ///
     /// - Throws: `ZoniError` if the clear operation fails.
     public func clear() async throws {
-        fatalError("Not implemented")
+        // Delete all chunks - use exists filter to match all records
+        // All chunks have a documentId, so this matches everything
+        try await vectorStore.delete(filter: .exists("documentId"))
+        documentCount = 0
     }
 
-    /// Registers a new document loader with the pipeline.
+    /// Registers a document loader with the pipeline's registry.
     ///
     /// Document loaders are used to load content from various file formats
-    /// during ingestion. Loaders are checked in order of registration.
+    /// during ingestion. The loader is registered for all its supported extensions.
     ///
     /// - Parameter loader: The document loader to register.
-    public func registerLoader(_ loader: any DocumentLoader) {
-        loaders.append(loader)
+    public func registerLoader(_ loader: any DocumentLoader) async {
+        await loaderRegistry.register(loader)
     }
 }

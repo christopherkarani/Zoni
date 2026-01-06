@@ -184,6 +184,8 @@ public actor PineconeStore: VectorStore {
     ///
     /// This method uses upsert semantics: if a vector with the same ID already
     /// exists, it will be replaced with the new vector and metadata.
+    /// For large batches (>100 vectors), the operation is automatically split
+    /// into multiple requests to respect Pinecone's API limits.
     ///
     /// - Parameters:
     ///   - chunks: The chunks to store. Each chunk must have a unique ID.
@@ -206,10 +208,6 @@ public actor PineconeStore: VectorStore {
     ///
     /// try await store.add(chunks, embeddings: embeddings)
     /// ```
-    ///
-    /// - Note: Pinecone has a limit on the number of vectors per upsert request
-    ///   (typically 100). For large batches, consider splitting into smaller
-    ///   requests.
     public func add(_ chunks: [Chunk], embeddings: [Embedding]) async throws {
         // Validate that counts match
         guard chunks.count == embeddings.count else {
@@ -221,8 +219,44 @@ public actor PineconeStore: VectorStore {
         // Handle empty input
         guard !chunks.isEmpty else { return }
 
+        // Pinecone recommends batches of 100 vectors per upsert
+        let batchSize = 100
+
+        // If within single batch size, execute directly
+        if chunks.count <= batchSize {
+            try await upsertBatch(chunks: chunks, embeddings: embeddings)
+            return
+        }
+
+        // Split into batches and execute concurrently
+        let chunkBatches = chunks.chunked(into: batchSize)
+        let embeddingBatches = embeddings.chunked(into: batchSize)
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (chunkBatch, embeddingBatch) in zip(chunkBatches, embeddingBatches) {
+                group.addTask {
+                    try await self.upsertBatch(chunks: chunkBatch, embeddings: embeddingBatch)
+                }
+            }
+
+            // Wait for all batches to complete
+            for try await _ in group { }
+        }
+    }
+
+    /// Upserts a single batch of chunks (internal helper).
+    ///
+    /// - Parameters:
+    ///   - chunks: The chunks to upsert (should be ≤100).
+    ///   - embeddings: Corresponding embeddings.
+    /// - Throws: `ZoniError.insertionFailed` if the Pinecone API returns an error.
+    private func upsertBatch(chunks: [Chunk], embeddings: [Embedding]) async throws {
+        guard !chunks.isEmpty else { return }
+
         // Build the upsert request
-        let url = URL(string: "\(indexHost)/vectors/upsert")!
+        guard let url = URL(string: "\(indexHost)/vectors/upsert") else {
+            throw ZoniError.insertionFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -314,7 +348,9 @@ public actor PineconeStore: VectorStore {
         }
 
         // Build the query request
-        let url = URL(string: "\(indexHost)/query")!
+        guard let url = URL(string: "\(indexHost)/query") else {
+            throw ZoniError.searchFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -366,6 +402,8 @@ public actor PineconeStore: VectorStore {
     /// Deletes chunks with the specified IDs from the Pinecone index.
     ///
     /// IDs that do not exist in the index are silently ignored.
+    /// For large batches (>1000 IDs), the operation is automatically split
+    /// into multiple requests to respect Pinecone's API limits.
     ///
     /// - Parameter ids: The IDs of chunks to delete.
     ///
@@ -376,13 +414,48 @@ public actor PineconeStore: VectorStore {
     /// ```swift
     /// // Delete specific chunks by ID
     /// try await store.delete(ids: ["chunk-1", "chunk-2", "chunk-3"])
+    ///
+    /// // Delete large batch (automatically batched)
+    /// try await store.delete(ids: Array(1...5000).map { "chunk-\($0)" })
     /// ```
     public func delete(ids: [String]) async throws {
         // Handle empty input
         guard !ids.isEmpty else { return }
 
+        // Pinecone recommends batches of 1000 IDs per request
+        let batchSize = 1000
+
+        // If within single batch size, execute directly
+        if ids.count <= batchSize {
+            try await deleteBatch(ids: ids)
+            return
+        }
+
+        // Split into batches and execute concurrently
+        let batches = ids.chunked(into: batchSize)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for batch in batches {
+                group.addTask {
+                    try await self.deleteBatch(ids: batch)
+                }
+            }
+
+            // Wait for all batches to complete
+            for try await _ in group { }
+        }
+    }
+
+    /// Deletes a single batch of IDs (internal helper).
+    ///
+    /// - Parameter ids: The IDs to delete (should be ≤1000).
+    /// - Throws: `ZoniError.insertionFailed` if the Pinecone API returns an error.
+    private func deleteBatch(ids: [String]) async throws {
+        guard !ids.isEmpty else { return }
+
         // Build the delete request
-        let url = URL(string: "\(indexHost)/vectors/delete")!
+        guard let url = URL(string: "\(indexHost)/vectors/delete") else {
+            throw ZoniError.insertionFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -437,7 +510,9 @@ public actor PineconeStore: VectorStore {
     ///   Pinecone processes these deletions asynchronously.
     public func delete(filter: MetadataFilter) async throws {
         // Build the delete request
-        let url = URL(string: "\(indexHost)/vectors/delete")!
+        guard let url = URL(string: "\(indexHost)/vectors/delete") else {
+            throw ZoniError.insertionFailed(reason: "Invalid Pinecone URL: \(indexHost)")
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval
@@ -486,7 +561,12 @@ public actor PineconeStore: VectorStore {
     /// ```
     public func count() async throws -> Int {
         // Build the describe_index_stats request
-        let url = URL(string: "\(indexHost)/describe_index_stats")!
+        guard let url = URL(string: "\(indexHost)/describe_index_stats") else {
+            throw ZoniError.vectorStoreConnectionFailed(
+                store: name,
+                reason: "Invalid Pinecone URL: \(indexHost)"
+            )
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeoutInterval

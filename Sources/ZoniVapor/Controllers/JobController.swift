@@ -8,6 +8,13 @@
 import Vapor
 import ZoniServer
 
+// MARK: - Response DTOs
+
+/// Response for job cancellation.
+struct CancelResponse: Content {
+    let cancelled: Bool
+}
+
 // MARK: - JobController
 
 /// Controller for job management endpoints.
@@ -83,7 +90,7 @@ struct JobController: RouteCollection {
     /// - Returns: An array of job status responses.
     @Sendable
     func listJobs(req: Request) async throws -> [JobStatusResponse] {
-        let tenant = try req.tenant
+        let tenant = try req.requireTenant()
         let status = req.query[String.self, at: "status"].flatMap { JobStatus(rawValue: $0) }
         let limit = min(req.query[Int.self, at: "limit"] ?? 50, 100)
 
@@ -135,7 +142,8 @@ struct JobController: RouteCollection {
         }
 
         // Verify tenant owns this job
-        if record.tenantId != try req.tenant.tenantId {
+        let tenant = try req.requireTenant()
+        if record.tenantId != tenant.tenantId {
             throw Abort(.notFound, reason: "Job not found")
         }
 
@@ -169,18 +177,17 @@ struct JobController: RouteCollection {
         }
 
         // Verify job exists and belongs to tenant
+        let tenant = try req.requireTenant()
         if let record = try await req.application.zoni.jobQueue.getJob(jobId) {
-            if record.tenantId != try req.tenant.tenantId {
+            if record.tenantId != tenant.tenantId {
                 throw Abort(.notFound, reason: "Job not found")
             }
         }
 
         let cancelled = try await req.application.zoni.jobQueue.cancel(jobId)
 
-        return Response(
-            status: cancelled ? .ok : .conflict,
-            body: .init(string: "{\"cancelled\": \(cancelled)}")
-        )
+        let response = CancelResponse(cancelled: cancelled)
+        return try await response.encodeResponse(status: cancelled ? .ok : .conflict, for: req)
     }
 }
 

@@ -89,7 +89,7 @@ public actor BatchEmbedder {
 
             // Start initial concurrent tasks
             while inFlight < maxConcurrency, let (index, batch) = batchIterator.next() {
-                group.addTask {
+                group.addTask(priority: .high) {
                     let embeddings = try await self.provider.embed(batch)
                     return (index, embeddings)
                 }
@@ -103,7 +103,7 @@ public actor BatchEmbedder {
 
                 // Schedule next batch if available
                 if let (index, batch) = batchIterator.next() {
-                    group.addTask {
+                    group.addTask(priority: .high) {
                         let embeddings = try await self.provider.embed(batch)
                         return (index, embeddings)
                     }
@@ -142,7 +142,7 @@ public actor BatchEmbedder {
             var inFlight = 0
 
             while inFlight < maxConcurrency, let (index, batch) = batchIterator.next() {
-                group.addTask {
+                group.addTask(priority: .high) {
                     let embeddings = try await self.provider.embed(batch)
                     return (index, embeddings)
                 }
@@ -156,7 +156,7 @@ public actor BatchEmbedder {
                 progress(completedBatches, totalBatches)
 
                 if let (index, batch) = batchIterator.next() {
-                    group.addTask {
+                    group.addTask(priority: .high) {
                         let embeddings = try await self.provider.embed(batch)
                         return (index, embeddings)
                     }
@@ -240,8 +240,13 @@ public actor BatchEmbedder {
 
                         // Start initial tasks
                         while inFlight < maxConcurrency, let (batchIndex, batch) = batchIterator.next() {
-                            let offset = offsets[batchIndex]!
-                            group.addTask {
+                            guard let offset = offsets[batchIndex] else {
+                                continuation.finish(throwing: ZoniError.embeddingFailed(
+                                    reason: "Batch offset not found for index \(batchIndex)"
+                                ))
+                                return
+                            }
+                            group.addTask(priority: .high) {
                                 let embeddings = try await self.provider.embed(batch)
                                 return embeddings.enumerated().map { (offset + $0.offset, $0.element) }
                             }
@@ -256,8 +261,13 @@ public actor BatchEmbedder {
                             inFlight -= 1
 
                             if let (batchIndex, batch) = batchIterator.next() {
-                                let offset = offsets[batchIndex]!
-                                group.addTask {
+                                guard let offset = offsets[batchIndex] else {
+                                    continuation.finish(throwing: ZoniError.embeddingFailed(
+                                        reason: "Batch offset not found for index \(batchIndex)"
+                                    ))
+                                    return
+                                }
+                                group.addTask(priority: .high) {
                                     let embeddings = try await self.provider.embed(batch)
                                     return embeddings.enumerated().map { (offset + $0.offset, $0.element) }
                                 }
