@@ -244,9 +244,11 @@ let ollama = OllamaEmbedding(baseURL: "http://localhost:11434", model: "nomic-em
 
 // On-device (Apple platforms)
 let apple = NLEmbeddingProvider(language: .english)  // Free, private
-let mlx = try MLXEmbeddingProvider(modelPath: "...")  // GPU-accelerated
+let mlx = try MLXEmbeddingProvider(modelPath: "...")  // GPU-accelerated (⚠️ Experimental - see docs)
 let swift = try SwiftEmbeddingsProvider(model: .model2VecBase)  // Ultra-fast
 ```
+
+> **Note**: `MLXEmbeddingProvider` is experimental and not recommended for production use. See [AppleGuide.md](Documentation/AppleGuide.md) for details.
 
 ### Vector Stores
 Flexible storage backends:
