@@ -376,4 +376,4 @@ Built with Swift 6.0 and powered by:
 
 **Questions?** Open an [issue](../../issues) or start a [discussion](../../discussions).
 
-**Looking for enterprise support?** Contact [chris@example.com](mailto:chris@example.com).
+**Looking for enterprise support?** Contact [chris@example.com](mailto:chris@bebop.cash).
