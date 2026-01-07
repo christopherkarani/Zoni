@@ -158,6 +158,20 @@ extension ExtractedTable: Hashable {
     }
 }
 
+// MARK: - DetectedRegion
+
+/// A Sendable representation of a detected table region.
+///
+/// This struct extracts the essential data from `VNRectangleObservation`
+/// to safely cross actor isolation boundaries without using `nonisolated(unsafe)`.
+private struct DetectedRegion: Sendable {
+    /// The bounding box in normalized image coordinates.
+    let boundingBox: CGRect
+
+    /// The confidence score of the detection (0.0 to 1.0).
+    let confidence: Float
+}
+
 // MARK: - TableExtractor
 
 /// Extracts tabular data from images using Apple's Vision framework.
@@ -404,11 +418,12 @@ public actor TableExtractor {
     /// Detects rectangular regions that may contain tables.
     ///
     /// Uses `VNDetectRectanglesRequest` with parameters tuned for table detection.
+    /// Results are converted to `DetectedRegion` structs for safe actor isolation.
     ///
     /// - Parameter image: The image to search for rectangles.
-    /// - Returns: An array of rectangle observations.
+    /// - Returns: An array of detected regions with bounding boxes and confidence.
     /// - Throws: Vision framework errors if detection fails.
-    private func detectTableRegions(in image: CGImage) async throws -> [VNRectangleObservation] {
+    private func detectTableRegions(in image: CGImage) async throws -> [DetectedRegion] {
         try await withCheckedThrowingContinuation { continuation in
             let request = VNDetectRectanglesRequest { request, error in
                 if let error {
@@ -416,13 +431,16 @@ public actor TableExtractor {
                     return
                 }
 
-                // SAFETY: VNRectangleObservation is not marked Sendable by Apple, but the
-                // objects returned from Vision request results are effectively immutable after
-                // creation. The Vision framework creates these as read-only value snapshots
-                // within the completion handler, making them safe to transfer across actor
-                // isolation boundaries despite the missing Sendable conformance.
-                nonisolated(unsafe) let observations = request.results as? [VNRectangleObservation] ?? []
-                continuation.resume(returning: observations)
+                // Extract only the Sendable data we need from Vision observations
+                // This avoids nonisolated(unsafe) by converting to our own Sendable type
+                let observations = request.results as? [VNRectangleObservation] ?? []
+                let regions = observations.map { observation in
+                    DetectedRegion(
+                        boundingBox: observation.boundingBox,
+                        confidence: observation.confidence
+                    )
+                }
+                continuation.resume(returning: regions)
             }
 
             request.minimumAspectRatio = configuration.minimumAspectRatio
@@ -526,15 +544,15 @@ public actor TableExtractor {
         return rows
     }
 
-    /// Crops an image to a rectangle observation region.
+    /// Crops an image to a detected region.
     ///
     /// Converts normalized Vision coordinates to pixel coordinates and crops.
     ///
     /// - Parameters:
     ///   - image: The source image.
-    ///   - region: The rectangle observation defining the crop region.
+    ///   - region: The detected region defining the crop area.
     /// - Returns: The cropped image, or `nil` if cropping fails.
-    private func cropImage(_ image: CGImage, to region: VNRectangleObservation) -> CGImage? {
+    private func cropImage(_ image: CGImage, to region: DetectedRegion) -> CGImage? {
         let bounds = region.boundingBox
 
         // Convert normalized coordinates to pixel coordinates

@@ -182,7 +182,7 @@ public struct ParentChildChunker: ChunkingStrategy, Sendable {
         var allChunks: [Chunk] = []
 
         // Phase 1: Create parent chunks
-        let parentChunks = createParentChunks(from: document)
+        let parentChunks = try createParentChunks(from: document)
 
         // Phase 2: Create child chunks for each parent
         for (parentIndex, parent) in parentChunks.enumerated() {
@@ -256,7 +256,8 @@ public struct ParentChildChunker: ChunkingStrategy, Sendable {
     ///
     /// - Parameter document: The document to create parent chunks from.
     /// - Returns: An array of parent chunks without child references yet.
-    private func createParentChunks(from document: Document) -> [Chunk] {
+    /// - Throws: `ZoniError.chunkingFailed` if the document is too large (offset overflow).
+    private func createParentChunks(from document: Document) throws -> [Chunk] {
         let text = document.content.trimmingCharacters(in: .whitespacesAndNewlines)
         var chunks: [Chunk] = []
         var currentContent = ""
@@ -287,7 +288,13 @@ public struct ParentChildChunker: ChunkingStrategy, Sendable {
                     // Use overflow-safe addition for very large documents
                     let increment = currentContent.count + parentSeparator.count
                     let (newOffset, overflow) = currentStart.addingReportingOverflow(increment)
-                    currentStart = overflow ? Int.max : newOffset
+                    if overflow {
+                        throw ZoniError.chunkingFailed(
+                            reason: "Document too large: character offset overflow at position \(currentStart). " +
+                                "Consider splitting the document into smaller parts."
+                        )
+                    }
+                    currentStart = newOffset
                 }
                 currentContent = trimmed
             }

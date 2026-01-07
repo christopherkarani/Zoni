@@ -124,6 +124,12 @@ public actor SQLiteVectorStore: VectorStore {
 
     // MARK: - Table Definition
 
+    /// Lock protecting schema creation during initialization.
+    ///
+    /// This ensures thread-safe schema creation even though the method is nonisolated.
+    /// Required because `createSchemaIfNeeded()` is called from init before actor isolation.
+    private let schemaLock = NSLock()
+
     /// The SQLite table expression for chunks.
     ///
     /// Marked as `nonisolated(unsafe)` because SQLite types are not Sendable,
@@ -230,7 +236,13 @@ public actor SQLiteVectorStore: VectorStore {
     /// - The main chunks table with all required columns
     /// - An index on `document_id` for efficient document-based queries
     /// - An index on `chunk_index` for efficient ordering within documents
+    ///
+    /// Thread safety is ensured via `schemaLock` since this method is nonisolated
+    /// and called from init before actor isolation is established.
     nonisolated private func createSchemaIfNeeded() throws {
+        schemaLock.lock()
+        defer { schemaLock.unlock() }
+
         // Create the main table
         try connection.run(chunksTable.create(ifNotExists: true) { table in
             table.column(idColumn, primaryKey: true)
@@ -423,9 +435,11 @@ public actor SQLiteVectorStore: VectorStore {
         }
 
         // Validate query embedding dimensions
-        guard query.dimensions == dimensions else {
+        // Use actualDimensions if available (set on first add), otherwise use configured dimensions
+        let expectedDimensions = actualDimensions ?? dimensions
+        guard query.dimensions == expectedDimensions else {
             throw ZoniError.searchFailed(
-                reason: "Query embedding has \(query.dimensions) dimensions, expected \(dimensions)"
+                reason: "Query embedding has \(query.dimensions) dimensions, expected \(expectedDimensions)"
             )
         }
 

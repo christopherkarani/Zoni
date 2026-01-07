@@ -538,16 +538,26 @@ public actor RAGEvaluator {
             return min(max(score, 0.0), 1.0)
         }
 
-        // Try to extract a number from the response
-        let pattern = #"(\d+\.?\d*)"#
-        if let regex = try? NSRegularExpression(pattern: pattern),
-           let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)),
-           let range = Range(match.range(at: 1), in: trimmed),
-           let score = Float(String(trimmed[range])) {
-            return min(max(score, 0.0), 1.0)
+        // Try to extract a number from the response using regex
+        do {
+            let pattern = #"(\d+\.?\d*)"#
+            let regex = try NSRegularExpression(pattern: pattern)
+            if let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)),
+               let range = Range(match.range(at: 1), in: trimmed),
+               let score = Float(String(trimmed[range])) {
+                return min(max(score, 0.0), 1.0)
+            }
+        } catch {
+            // Log regex compilation errors in debug builds
+            #if DEBUG
+            assertionFailure("[RAGEvaluator] Regex pattern compilation failed: \(error). This should not happen with a valid pattern.")
+            #endif
         }
 
         // Default to moderate score if parsing fails
+        #if DEBUG
+        print("[RAGEvaluator] Failed to parse faithfulness score from response: '\(trimmed.prefix(100))'. Defaulting to 0.5")
+        #endif
         return 0.5
     }
 

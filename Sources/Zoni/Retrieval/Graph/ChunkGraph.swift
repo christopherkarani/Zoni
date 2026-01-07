@@ -150,6 +150,13 @@ public actor ChunkGraph {
     /// The minimum cosine similarity required to create a semantic edge.
     private let similarityThreshold: Float
 
+    /// Warning message if semantic edge building was truncated.
+    ///
+    /// When the graph contains more chunks than can be fully compared within
+    /// the O(n²) safety limit, this property contains a warning message.
+    /// Check this after calling `addChunks` to detect partial graph construction.
+    private(set) var truncationWarning: String?
+
     // MARK: - Initialization
 
     /// Creates a new chunk graph.
@@ -258,7 +265,7 @@ public actor ChunkGraph {
     /// - Note: This method has O(n²) complexity. For large chunk sets (>500),
     ///   consider using approximate nearest neighbor algorithms instead.
     ///   A safety limit of 100,000 comparisons is enforced to prevent
-    ///   excessive computation.
+    ///   excessive computation. If truncation occurs, `truncationWarning` is set.
     private func buildSemanticEdges(_ chunks: [Chunk], embeddings: [Embedding]) {
         // Need at least 2 chunks to compare
         guard chunks.count >= 2 else { return }
@@ -268,6 +275,9 @@ public actor ChunkGraph {
         let maxComparisons = 100_000
         var comparisons = 0
 
+        // Calculate total possible comparisons for progress tracking
+        let totalPossible = (chunks.count * (chunks.count - 1)) / 2
+
         // Build pairs and check similarity
         for i in 0..<chunks.count {
             guard i < embeddings.count else { break }
@@ -276,12 +286,21 @@ public actor ChunkGraph {
             for j in (i + 1)..<chunks.count {
                 guard j < embeddings.count else { break }
 
-                // Enforce comparison limit
+                // Enforce comparison limit with detailed warning
                 comparisons += 1
                 if comparisons > maxComparisons {
+                    let processedPercent = Int((Double(comparisons) / Double(totalPossible)) * 100)
+                    let warning = "[ChunkGraph] Semantic edge building truncated at \(maxComparisons) comparisons (\(processedPercent)% of \(totalPossible) total). " +
+                        "Processed chunks 0-\(i) of \(chunks.count). Consider using approximate k-NN for datasets > 450 chunks."
+
+                    // Store warning for caller inspection
+                    truncationWarning = warning
+
+                    // Log in both DEBUG and RELEASE for visibility
                     #if DEBUG
-                    print("[ChunkGraph] Semantic edge building truncated at \(maxComparisons) comparisons. Consider using approximate k-NN for large datasets.")
+                    print(warning)
                     #endif
+
                     return
                 }
 
@@ -309,6 +328,9 @@ public actor ChunkGraph {
                 }
             }
         }
+
+        // Clear any previous warning if we completed successfully
+        truncationWarning = nil
     }
 
     /// Adds an edge from source to target, avoiding duplicates.
