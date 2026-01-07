@@ -284,7 +284,10 @@ public struct ParentChildChunker: ChunkingStrategy, Sendable {
                         startOffset: currentStart,
                         source: document.metadata.source
                     ))
-                    currentStart += currentContent.count + parentSeparator.count
+                    // Use overflow-safe addition for very large documents
+                    let increment = currentContent.count + parentSeparator.count
+                    let (newOffset, overflow) = currentStart.addingReportingOverflow(increment)
+                    currentStart = overflow ? Int.max : newOffset
                 }
                 currentContent = trimmed
             }

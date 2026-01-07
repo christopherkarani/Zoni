@@ -158,6 +158,9 @@ public actor GraphRetriever: Retriever {
 
         // Step 4: BFS traversal
         for hop in 0..<hops {
+            // Check for cancellation at the start of each hop
+            try Task.checkCancellation()
+
             let decayFactor = Float(1.0 / Double(hop + 2))
             var nextFrontier: [String] = []
 

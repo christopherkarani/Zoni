@@ -311,6 +311,9 @@ public actor ParentChildRetriever: Retriever {
         limit: Int,
         filter: MetadataFilter?
     ) async throws -> [RetrievalResult] {
+        // Check for cancellation before starting expensive operations
+        try Task.checkCancellation()
+
         // Step 1: Embed the query
         let queryEmbedding: Embedding
         do {
@@ -320,6 +323,9 @@ public actor ParentChildRetriever: Retriever {
                 reason: "Failed to embed query: \(error.localizedDescription)"
             )
         }
+
+        // Check for cancellation after embedding
+        try Task.checkCancellation()
 
         // Step 2: Build filter for child chunks
         let childFilter = buildChildFilter(baseFilter: filter)
@@ -434,12 +440,18 @@ public actor ParentChildRetriever: Retriever {
         var results: [RetrievalResult] = []
 
         for (parentId, score, children) in rankedParents {
+            // Check for cancellation during parent fetching
+            try Task.checkCancellation()
+
             // Fetch parent chunk
             let parentChunk: Chunk?
             do {
                 parentChunk = try await parentLookup.parent(forId: parentId)
             } catch {
-                // Log error but continue with other parents
+                // Log error for debugging but continue with other parents
+                #if DEBUG
+                print("[ParentChildRetriever] Failed to fetch parent '\(parentId)': \(error.localizedDescription)")
+                #endif
                 continue
             }
 

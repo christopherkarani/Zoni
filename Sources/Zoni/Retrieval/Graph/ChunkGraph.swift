@@ -254,9 +254,19 @@ public actor ChunkGraph {
     ///
     /// For each pair of chunks, if their cosine similarity exceeds the
     /// threshold, bidirectional edges are created with the similarity as weight.
+    ///
+    /// - Note: This method has O(n²) complexity. For large chunk sets (>500),
+    ///   consider using approximate nearest neighbor algorithms instead.
+    ///   A safety limit of 100,000 comparisons is enforced to prevent
+    ///   excessive computation.
     private func buildSemanticEdges(_ chunks: [Chunk], embeddings: [Embedding]) {
         // Need at least 2 chunks to compare
         guard chunks.count >= 2 else { return }
+
+        // Safety limit to prevent O(n²) explosion for large datasets
+        // 500 chunks = 124,750 comparisons, so limit at ~450 chunks worth
+        let maxComparisons = 100_000
+        var comparisons = 0
 
         // Build pairs and check similarity
         for i in 0..<chunks.count {
@@ -265,6 +275,16 @@ public actor ChunkGraph {
 
             for j in (i + 1)..<chunks.count {
                 guard j < embeddings.count else { break }
+
+                // Enforce comparison limit
+                comparisons += 1
+                if comparisons > maxComparisons {
+                    #if DEBUG
+                    print("[ChunkGraph] Semantic edge building truncated at \(maxComparisons) comparisons. Consider using approximate k-NN for large datasets.")
+                    #endif
+                    return
+                }
+
                 let embeddingB = embeddings[j]
 
                 let similarity = cosineSimilarity(embeddingA.vector, embeddingB.vector)

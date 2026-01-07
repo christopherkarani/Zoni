@@ -416,7 +416,11 @@ public actor TableExtractor {
                     return
                 }
 
-                // VNRectangleObservation is not Sendable but is effectively immutable
+                // SAFETY: VNRectangleObservation is not marked Sendable by Apple, but the
+                // objects returned from Vision request results are effectively immutable after
+                // creation. The Vision framework creates these as read-only value snapshots
+                // within the completion handler, making them safe to transfer across actor
+                // isolation boundaries despite the missing Sendable conformance.
                 nonisolated(unsafe) let observations = request.results as? [VNRectangleObservation] ?? []
                 continuation.resume(returning: observations)
             }
