@@ -155,7 +155,15 @@ public actor ChunkGraph {
     /// When the graph contains more chunks than can be fully compared within
     /// the O(n²) safety limit, this property contains a warning message.
     /// Check this after calling `addChunks` to detect partial graph construction.
-    private(set) var truncationWarning: String?
+    ///
+    /// Example usage:
+    /// ```swift
+    /// await graph.addChunks(chunks, embeddings: embeddings)
+    /// if let warning = await graph.truncationWarning {
+    ///     print("Warning: \(warning)")
+    /// }
+    /// ```
+    public private(set) var truncationWarning: String?
 
     // MARK: - Initialization
 
