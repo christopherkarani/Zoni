@@ -134,6 +134,7 @@ let package = Package(
                 .product(name: "Embeddings", package: "swift-embeddings"),
             ],
             path: "Sources/ZoniApple"
+            // Note: Metal shaders are compiled at runtime from inline source in MetalVectorCompute.swift
         ),
 
         // SwiftAgents integration layer

@@ -75,8 +75,10 @@ public actor MMRRetriever: Retriever {
     ) {
         self.baseRetriever = baseRetriever
         self.embeddingProvider = embeddingProvider
-        self.lambda = lambda
-        self.candidateMultiplier = candidateMultiplier
+        // Clamp lambda to valid range [0.0, 1.0]
+        self.lambda = max(0.0, min(1.0, lambda))
+        // Ensure candidateMultiplier is at least 2 for meaningful diversity
+        self.candidateMultiplier = max(2, candidateMultiplier)
     }
 
     // MARK: - Configuration
