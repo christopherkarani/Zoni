@@ -345,7 +345,8 @@ struct RAGPipelineStreamQueryTests {
 
         var events: [RAGStreamEvent] = []
 
-        for try await event in pipeline.streamQuery("Test question") {
+        let stream = await pipeline.streamQuery("Test question")
+        for try await event in stream {
             events.append(event)
         }
 
@@ -367,7 +368,8 @@ struct RAGPipelineStreamQueryTests {
 
         var foundRetrievalComplete = false
 
-        for try await event in pipeline.streamQuery("Test question") {
+        let stream = await pipeline.streamQuery("Test question")
+        for try await event in stream {
             if case .retrievalComplete(let sources) = event {
                 foundRetrievalComplete = true
                 #expect(sources.count >= 0) // May be empty if no matches
@@ -384,7 +386,8 @@ struct RAGPipelineStreamQueryTests {
 
         var generationChunks: [String] = []
 
-        for try await event in pipeline.streamQuery("Test question") {
+        let stream = await pipeline.streamQuery("Test question")
+        for try await event in stream {
             if case .generationChunk(let text) = event {
                 generationChunks.append(text)
             }
@@ -400,7 +403,8 @@ struct RAGPipelineStreamQueryTests {
 
         var lastEvent: RAGStreamEvent?
 
-        for try await event in pipeline.streamQuery("Test question") {
+        let stream = await pipeline.streamQuery("Test question")
+        for try await event in stream {
             lastEvent = event
         }
 

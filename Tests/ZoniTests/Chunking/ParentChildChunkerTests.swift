@@ -452,8 +452,16 @@ struct ParentChildChunkerEdgeCaseTests {
 
         let document = makeDocument(content: "")
 
-        await #expect(throws: ZoniError.emptyDocument) {
+        do {
             _ = try await chunker.chunk(document)
+            Issue.record("Expected emptyDocument error to be thrown")
+        } catch let error as ZoniError {
+            guard case .emptyDocument = error else {
+                Issue.record("Expected emptyDocument error but got \(error)")
+                return
+            }
+        } catch {
+            Issue.record("Expected ZoniError but got \(error)")
         }
     }
 
@@ -467,8 +475,16 @@ struct ParentChildChunkerEdgeCaseTests {
 
         let document = makeDocument(content: "   \n\n\t  ")
 
-        await #expect(throws: ZoniError.emptyDocument) {
+        do {
             _ = try await chunker.chunk(document)
+            Issue.record("Expected emptyDocument error to be thrown")
+        } catch let error as ZoniError {
+            guard case .emptyDocument = error else {
+                Issue.record("Expected emptyDocument error but got \(error)")
+                return
+            }
+        } catch {
+            Issue.record("Expected ZoniError but got \(error)")
         }
     }
 

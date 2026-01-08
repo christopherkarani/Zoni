@@ -563,8 +563,7 @@ public actor PineconeStore: VectorStore {
         // Build the describe_index_stats request
         guard let url = URL(string: "\(indexHost)/describe_index_stats") else {
             throw ZoniError.vectorStoreConnectionFailed(
-                store: name,
-                reason: "Invalid Pinecone URL: \(indexHost)"
+                reason: "Invalid Pinecone URL for index '\(name)': \(indexHost)"
             )
         }
         var request = URLRequest(url: url)
