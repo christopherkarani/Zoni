@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // JobRoutes.swift - HTTP routes for background job management.
@@ -8,7 +9,6 @@
 import Foundation
 import Hummingbird
 import HummingbirdAuth
-import ZoniServer
 
 // MARK: - Job Routes
 
@@ -201,3 +201,5 @@ extension JobResultData {
         )
     }
 }
+
+#endif

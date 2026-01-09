@@ -1,3 +1,4 @@
+#if VAPOR
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // ZoniVapor.swift - Vapor framework integration for Zoni RAG.
@@ -6,7 +7,7 @@
 // providing Vapor web framework integration for the Zoni RAG system.
 
 @_exported import Vapor
-@_exported import ZoniServer
+@_exported import Vapor
 
 // MARK: - ZoniVapor
 
@@ -83,3 +84,5 @@ public enum ZoniVapor {
     /// The current version of ZoniVapor.
     public static let version = "0.1.0"
 }
+
+#endif

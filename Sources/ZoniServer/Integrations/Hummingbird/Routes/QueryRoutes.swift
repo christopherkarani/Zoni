@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // QueryRoutes.swift - HTTP routes for RAG query operations.
@@ -8,7 +9,6 @@
 import Hummingbird
 import HummingbirdAuth
 import Zoni
-import ZoniServer
 
 // MARK: - Query Routes
 
@@ -111,3 +111,5 @@ public func addQueryRoutes<Context: AuthRequestContext>(
         return results.map { SourceDTO(from: $0) }
     }
 }
+
+#endif

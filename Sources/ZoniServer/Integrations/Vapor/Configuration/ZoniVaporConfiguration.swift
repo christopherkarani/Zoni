@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // ZoniVaporConfiguration.swift - Configuration for ZoniVapor integration.
@@ -6,7 +7,6 @@
 // for integrating Zoni RAG services with the Vapor web framework.
 
 import Vapor
-import ZoniServer
 import Zoni
 
 // MARK: - ZoniVaporConfiguration
@@ -212,3 +212,5 @@ extension Application {
         }
     }
 }
+
+#endif

@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // TenantMiddleware.swift - Middleware for tenant resolution from request headers.
@@ -7,7 +8,6 @@
 
 import Hummingbird
 import HummingbirdAuth
-import ZoniServer
 
 // MARK: - TenantMiddleware
 
@@ -100,3 +100,5 @@ where Context.Identity == TenantContext {
         return try await next(request, context)
     }
 }
+
+#endif

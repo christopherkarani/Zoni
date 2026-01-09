@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // HealthRoutes.swift - HTTP routes for health check endpoints.
@@ -7,7 +8,6 @@
 
 import Foundation
 import Hummingbird
-import ZoniServer
 
 // MARK: - Health Routes
 
@@ -85,3 +85,5 @@ public func addHealthRoutes<Context: RequestContext>(
         )
     }
 }
+
+#endif

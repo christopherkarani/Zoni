@@ -59,6 +59,9 @@ public actor SemanticChunker: ChunkingStrategy {
     /// The embedding provider used to generate vector representations.
     private let embeddingProvider: any EmbeddingProvider
 
+    /// The calculator used for vector math (e.g. Metal-accelerated).
+    private let similarityCalculator: SimilarityCalculator?
+
     /// The target size for each chunk in characters.
     ///
     /// Chunks may be smaller or larger than this target depending on
@@ -92,12 +95,14 @@ public actor SemanticChunker: ChunkingStrategy {
         embeddingProvider: any EmbeddingProvider,
         targetChunkSize: Int = 1000,
         similarityThreshold: Float = 0.5,
-        windowSize: Int = 3
+        windowSize: Int = 3,
+        similarityCalculator: SimilarityCalculator? = nil
     ) {
         self.embeddingProvider = embeddingProvider
         self.targetChunkSize = max(1, targetChunkSize)
         self.similarityThreshold = max(0.0, min(1.0, similarityThreshold))
         self.windowSize = max(1, windowSize)
+        self.similarityCalculator = similarityCalculator
     }
 
     // MARK: - Public Methods
@@ -219,14 +224,29 @@ public actor SemanticChunker: ChunkingStrategy {
 
         // Calculate similarity between adjacent windows
         var breakpoints: [Int] = []
+        let similarities: [Float]
 
-        for i in 0..<(embeddings.count - 1) {
-            let similarity = cosineSimilarity(embeddings[i].vector, embeddings[i + 1].vector)
+        if let calculator = similarityCalculator, !embeddings.isEmpty {
+            let flatVectors = embeddings.flatMap { $0.vector }
+            let dimensions = embeddings[0].dimensions
+            similarities = try await calculator.adjacentCosineSimilarity(vectors: flatVectors, dimensions: dimensions)
+        } else {
+            // CPU Fallback
+            var computed: [Float] = []
+            computed.reserveCapacity(embeddings.count - 1)
+            for i in 0..<(embeddings.count - 1) {
+                let score = cosineSimilarity(embeddings[i].vector, embeddings[i + 1].vector)
+                computed.append(score)
+            }
+            similarities = computed
+        }
 
+        // Identify breakpoints from similarities
+        for (i, similarity) in similarities.enumerated() {
             // If similarity drops below threshold, mark as breakpoint
             if similarity < similarityThreshold {
                 // The breakpoint occurs after sentence at index (i + windowSize - 1)
-                // This is the center of the current window
+                // This is the center of the current window pair logic
                 let breakpointIndex = i + windowSize / 2
                 if breakpointIndex > 0 && breakpointIndex < sentences.count - 1 {
                     breakpoints.append(breakpointIndex)
@@ -461,6 +481,6 @@ public actor SemanticChunker: ChunkingStrategy {
 
 extension SemanticChunker: CustomStringConvertible {
     public nonisolated var description: String {
-        "SemanticChunker(targetSize: \(targetChunkSize), threshold: \(similarityThreshold), windowSize: \(windowSize))"
+        "SemanticChunker(targetSize: \(targetChunkSize), threshold: \(similarityThreshold), windowSize: \(windowSize), accelerated: \(similarityCalculator != nil))"
     }
 }

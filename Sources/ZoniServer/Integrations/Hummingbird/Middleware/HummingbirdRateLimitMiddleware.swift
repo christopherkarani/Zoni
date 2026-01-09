@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // RateLimitMiddleware.swift - Middleware for per-tenant rate limiting.
@@ -7,7 +8,6 @@
 
 import Hummingbird
 import HummingbirdAuth
-import ZoniServer
 
 // MARK: - RateLimitMiddleware
 
@@ -121,3 +121,5 @@ where Context.Identity == TenantContext {
         return response
     }
 }
+
+#endif

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -23,16 +23,6 @@ let package = Package(
             name: "ZoniServer",
             targets: ["ZoniServer"]
         ),
-        // Vapor framework integration
-        .library(
-            name: "ZoniVapor",
-            targets: ["ZoniVapor"]
-        ),
-        // Hummingbird framework integration
-        .library(
-            name: "ZoniHummingbird",
-            targets: ["ZoniHummingbird"]
-        ),
         // Apple platform extensions (NaturalLanguage, Accelerate, etc.)
         .library(
             name: "ZoniApple",
@@ -43,6 +33,10 @@ let package = Package(
             name: "ZoniAgents",
             targets: ["ZoniAgents"]
         ),
+    ],
+    traits: [
+        "vapor",
+        "hummingbird"
     ],
     dependencies: [
         // Core dependencies
@@ -94,31 +88,19 @@ let package = Package(
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "Logging", package: "swift-log"),
+                // Vapor dependencies
+                .product(name: "Vapor", package: "vapor", condition: .when(traits: ["vapor"])),
+                .product(name: "JWT", package: "jwt", condition: .when(traits: ["vapor"])),
+                // Hummingbird dependencies
+                .product(name: "Hummingbird", package: "hummingbird", condition: .when(traits: ["hummingbird"])),
+                .product(name: "HummingbirdWebSocket", package: "hummingbird-websocket", condition: .when(traits: ["hummingbird"])),
+                .product(name: "HummingbirdAuth", package: "hummingbird-auth", condition: .when(traits: ["hummingbird"])),
             ],
-            path: "Sources/ZoniServer"
-        ),
-
-        // Vapor framework integration
-        .target(
-            name: "ZoniVapor",
-            dependencies: [
-                "ZoniServer",
-                .product(name: "Vapor", package: "vapor"),
-                .product(name: "JWT", package: "jwt"),
-            ],
-            path: "Sources/ZoniVapor"
-        ),
-
-        // Hummingbird framework integration
-        .target(
-            name: "ZoniHummingbird",
-            dependencies: [
-                "ZoniServer",
-                .product(name: "Hummingbird", package: "hummingbird"),
-                .product(name: "HummingbirdWebSocket", package: "hummingbird-websocket"),
-                .product(name: "HummingbirdAuth", package: "hummingbird-auth"),
-            ],
-            path: "Sources/ZoniHummingbird"
+            path: "Sources/ZoniServer",
+            swiftSettings: [
+                .define("VAPOR", .when(traits: ["vapor"])),
+                .define("HUMMINGBIRD", .when(traits: ["hummingbird"]))
+            ]
         ),
 
         // Apple platform extensions (Phase 5B)
@@ -162,20 +144,26 @@ let package = Package(
         .testTarget(
             name: "ZoniVaporTests",
             dependencies: [
-                "ZoniVapor",
-                .product(name: "XCTVapor", package: "vapor"),
+                "ZoniServer",
+                .product(name: "XCTVapor", package: "vapor", condition: .when(traits: ["vapor"])),
             ],
-            path: "Tests/ZoniVaporTests"
+            path: "Tests/ZoniVaporTests",
+            swiftSettings: [
+                .define("VAPOR", .when(traits: ["vapor"]))
+            ]
         ),
 
         // Hummingbird integration tests
         .testTarget(
             name: "ZoniHummingbirdTests",
             dependencies: [
-                "ZoniHummingbird",
-                .product(name: "HummingbirdTesting", package: "hummingbird"),
+                "ZoniServer",
+                .product(name: "HummingbirdTesting", package: "hummingbird", condition: .when(traits: ["hummingbird"])),
             ],
-            path: "Tests/ZoniHummingbirdTests"
+            path: "Tests/ZoniHummingbirdTests",
+            swiftSettings: [
+                .define("HUMMINGBIRD", .when(traits: ["hummingbird"]))
+            ]
         ),
 
         // Apple platform extension tests (Phase 5B)

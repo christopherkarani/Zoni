@@ -109,6 +109,9 @@ public actor MetalVectorCompute {
     /// Compute pipeline for batch magnitude.
     private nonisolated(unsafe) let magnitudePipeline: MTLComputePipelineState
 
+    /// Compute pipeline for adjacent vector similarity.
+    private nonisolated(unsafe) let adjacentSimilarityPipeline: MTLComputePipelineState
+
     /// Maximum threads per threadgroup for this device.
     private let maxThreadsPerThreadgroup: Int
     #endif
@@ -166,6 +169,7 @@ public actor MetalVectorCompute {
         self.rowMaxPipeline = try makePipeline("rowMax")
         self.mmrScoresPipeline = try makePipeline("computeMMRScores")
         self.magnitudePipeline = try makePipeline("batchMagnitude")
+        self.adjacentSimilarityPipeline = try makePipeline("adjacentCosineSimilarity")
 
         self.maxThreadsPerThreadgroup = cosineSimilarityPipeline.maxTotalThreadsPerThreadgroup
         self.isMetalAvailable = true
@@ -431,6 +435,54 @@ public actor MetalVectorCompute {
     }
     #endif
 
+
+    /// Computes cosine similarity between adjacent pairs of vectors (v[i] vs v[i+1]).
+    /// Returns N-1 scores.
+    #if canImport(Metal)
+    public func adjacentCosineSimilarity(
+        vectors: [Float],
+        dimensions: Int
+    ) async throws -> [Float] {
+        let vectorCount = vectors.count / dimensions
+        guard vectorCount >= 2 else { return [] }
+        let comparisonCount = vectorCount - 1
+        
+        guard let vectorBuffer = device.makeBuffer(
+            bytes: vectors,
+            length: vectors.count * MemoryLayout<Float>.size,
+            options: .storageModeShared
+        ),
+        let resultsBuffer = device.makeBuffer(
+            length: comparisonCount * MemoryLayout<Float>.size,
+            options: .storageModeShared
+        ) else {
+            throw MetalComputeError.bufferCreationFailed("Adjacent similarity buffers")
+        }
+        
+        var params = AdjacentSimilarityParams(
+            dimensions: UInt32(dimensions),
+            comparisonCount: UInt32(comparisonCount)
+        )
+        
+        guard let paramsBuffer = device.makeBuffer(
+            bytes: &params,
+            length: MemoryLayout<AdjacentSimilarityParams>.size,
+            options: .storageModeShared
+        ) else {
+            throw MetalComputeError.bufferCreationFailed("Params buffer")
+        }
+        
+        try await executeCompute(
+            pipeline: adjacentSimilarityPipeline,
+            buffers: [vectorBuffer, resultsBuffer, paramsBuffer],
+            threadCount: comparisonCount
+        )
+        
+        let resultsPointer = resultsBuffer.contents().bindMemory(to: Float.self, capacity: comparisonCount)
+        return Array(UnsafeBufferPointer(start: resultsPointer, count: comparisonCount))
+    }
+    #endif
+
     // MARK: - Private Implementation
 
     #if canImport(Metal)
@@ -543,6 +595,12 @@ private struct PairwiseSimilarityParams {
     let candidateCount: UInt32
     let selectedCount: UInt32
 }
+
+/// Parameters for adjacent similarity.
+private struct AdjacentSimilarityParams {
+    let dimensions: UInt32
+    let comparisonCount: UInt32
+}
 #endif
 
 // MARK: - Shader Source
@@ -567,6 +625,11 @@ extension MetalVectorCompute {
         uint dimensions;
         uint candidateCount;
         uint selectedCount;
+    };
+
+    struct AdjacentSimilarityParams {
+        uint dimensions;
+        uint comparisonCount;
     };
 
     kernel void batchCosineSimilarity(
@@ -704,6 +767,35 @@ extension MetalVectorCompute {
         }
 
         magnitudes[gid] = sqrt(sumSq);
+    }
+
+    kernel void adjacentCosineSimilarity(
+        device const float* vectors [[buffer(0)]],
+        device float* similarities [[buffer(1)]],
+        constant AdjacentSimilarityParams& params [[buffer(2)]],
+        uint gid [[thread_position_in_grid]]
+    ) {
+        if (gid >= params.comparisonCount) return;
+
+        // Compare vector[gid] with vector[gid + 1]
+        device const float* vecA = vectors + gid * params.dimensions;
+        device const float* vecB = vectors + (gid + 1) * params.dimensions;
+
+        float dotProduct = 0.0f;
+        float magASq = 0.0f;
+        float magBSq = 0.0f;
+
+        for (uint i = 0; i < params.dimensions; i++) {
+            float a = vecA[i];
+            float b = vecB[i];
+            dotProduct += a * b;
+            magASq += a * a;
+            magBSq += b * b;
+        }
+
+        float denom = sqrt(magASq) * sqrt(magBSq);
+        const float epsilon = 1e-8f;
+        similarities[gid] = (denom > epsilon) ? (dotProduct / denom) : 0.0f;
     }
     """
 }

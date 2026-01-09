@@ -1,10 +1,10 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // ZoniHummingbird.swift - Hummingbird framework integration for Zoni RAG.
 
 import Hummingbird
 import HummingbirdAuth
-import ZoniServer
 
 /// ZoniHummingbird provides Hummingbird framework integration for the Zoni RAG system.
 ///
@@ -119,4 +119,6 @@ public func addZoniRoutes<Context: AuthRequestContext>(
 }
 
 // Re-export ZoniServer types for convenience
-@_exported import ZoniServer
+@_exported import Hummingbird
+
+#endif

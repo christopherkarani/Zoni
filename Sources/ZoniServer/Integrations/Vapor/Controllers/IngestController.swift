@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // IngestController.swift - Controller for document ingestion endpoints.
@@ -6,7 +7,6 @@
 // RAG system, supporting both synchronous and asynchronous processing.
 
 import Vapor
-import ZoniServer
 import Zoni
 
 // MARK: - IngestController
@@ -245,3 +245,5 @@ struct IngestController: RouteCollection {
 // MARK: - Content Conformance
 
 extension IngestResponse: Content {}
+
+#endif

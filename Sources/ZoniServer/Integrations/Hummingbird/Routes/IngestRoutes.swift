@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // IngestRoutes.swift - HTTP routes for document ingestion operations.
@@ -8,7 +9,6 @@
 import Hummingbird
 import HummingbirdAuth
 import Zoni
-import ZoniServer
 
 // MARK: - Ingest Routes
 
@@ -187,3 +187,5 @@ extension AuthRequestContext where Identity == TenantContext {
         }
     }
 }
+
+#endif

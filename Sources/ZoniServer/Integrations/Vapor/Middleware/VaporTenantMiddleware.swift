@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // TenantMiddleware.swift - Middleware that resolves tenant from request headers.
@@ -6,7 +7,6 @@
 // credentials in HTTP requests, enabling multi-tenant RAG operations.
 
 import Vapor
-import ZoniServer
 
 // MARK: - TenantMiddleware
 
@@ -154,3 +154,5 @@ extension Request {
         storage[TenantKey.self]
     }
 }
+
+#endif

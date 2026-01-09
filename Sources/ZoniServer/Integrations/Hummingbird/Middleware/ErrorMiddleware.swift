@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // ZoniHummingbird - Hummingbird framework integration for Zoni RAG
 //
 // ErrorMiddleware.swift - Error handling middleware for consistent error responses.
@@ -9,7 +10,6 @@ import Foundation
 import Hummingbird
 import HummingbirdAuth
 import NIOCore
-import ZoniServer
 import Zoni
 
 // MARK: - ErrorMiddleware
@@ -218,3 +218,5 @@ public struct ErrorMiddleware<Context: RequestContext>: RouterMiddleware {
         }
     }
 }
+
+#endif

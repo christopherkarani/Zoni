@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // QueryController.swift - Controller for RAG query endpoints.
@@ -6,7 +7,6 @@
 // retrieving relevant documents without generation.
 
 import Vapor
-import ZoniServer
 import Zoni
 
 // MARK: - QueryController
@@ -191,3 +191,5 @@ private enum QueryParameterLimits {
 
 extension QueryResponse: Content {}
 extension SourceDTO: Content {}
+
+#endif

@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // HealthController.swift - Controller for health check endpoints.
@@ -6,7 +7,6 @@
 // typically used by load balancers and container orchestrators.
 
 import Vapor
-import ZoniServer
 
 // MARK: - HealthController
 
@@ -155,3 +155,5 @@ struct HealthController: RouteCollection {
 
 extension HealthResponse: Content {}
 extension ReadinessResponse: Content {}
+
+#endif

@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // IndexController.swift - Controller for index management endpoints.
@@ -6,7 +7,6 @@
 // including creation, listing, and deletion.
 
 import Vapor
-import ZoniServer
 import Zoni
 
 // MARK: - IndexController
@@ -227,3 +227,5 @@ struct IndexController: RouteCollection {
 
 extension IndexInfo: Content {}
 extension CreateIndexRequest: Content {}
+
+#endif

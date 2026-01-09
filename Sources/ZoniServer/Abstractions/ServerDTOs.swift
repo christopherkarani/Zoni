@@ -874,7 +874,7 @@ public struct QueryResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
+#if HUMMINGBIRD
 import Hummingbird
 import NIOCore
 
@@ -1115,7 +1115,7 @@ public struct IngestResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
+#if HUMMINGBIRD
 extension IngestResponse: ResponseGenerator {
     public func response(from request: Request, context: some RequestContext) throws -> Response {
         let encoder = JSONEncoder()
@@ -1351,7 +1351,7 @@ public struct JobStatusResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
+#if HUMMINGBIRD
 extension JobStatusResponse: ResponseGenerator {
     public func response(from request: Request, context: some RequestContext) throws -> Response {
         let encoder = JSONEncoder()
@@ -1401,7 +1401,7 @@ public struct HealthResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
+#if HUMMINGBIRD
 extension HealthResponse: ResponseGenerator {
     public func response(from request: Request, context: some RequestContext) throws -> Response {
         let encoder = JSONEncoder()
@@ -1448,7 +1448,7 @@ public struct ReadinessResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
+#if HUMMINGBIRD
 extension ReadinessResponse: ResponseGenerator {
     public func response(from request: Request, context: some RequestContext) throws -> Response {
         let encoder = JSONEncoder()

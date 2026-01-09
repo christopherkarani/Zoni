@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // JobController.swift - Controller for job management endpoints.
@@ -6,7 +7,6 @@
 // including listing, status checks, and cancellation.
 
 import Vapor
-import ZoniServer
 
 // MARK: - Response DTOs
 
@@ -226,3 +226,5 @@ extension JobStatusResponse {
 // MARK: - Content Conformance
 
 extension JobStatusResponse: Content {}
+
+#endif

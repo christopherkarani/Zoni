@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // RAGRequestContext.swift - Custom request context for RAG operations.
@@ -7,7 +8,6 @@
 
 import Hummingbird
 import HummingbirdAuth
-import ZoniServer
 
 // MARK: - RAGRequestContext
 
@@ -90,3 +90,5 @@ public struct RAGRequestContext: RequestContext, AuthRequestContext {
         }
     }
 }
+
+#endif

@@ -1,3 +1,4 @@
+#if VAPOR
 // ZoniVapor - Vapor framework integration for Zoni RAG
 //
 // RateLimitMiddleware.swift - Middleware that enforces rate limits per tenant.
@@ -6,7 +7,6 @@
 // using the token bucket algorithm for smooth rate limiting.
 
 import Vapor
-import ZoniServer
 
 // MARK: - RateLimitMiddleware
 
@@ -140,3 +140,5 @@ public struct RateLimitMiddleware: AsyncMiddleware {
         return response
     }
 }
+
+#endif

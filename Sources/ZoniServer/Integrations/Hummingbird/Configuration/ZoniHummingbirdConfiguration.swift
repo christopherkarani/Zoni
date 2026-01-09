@@ -1,3 +1,4 @@
+#if HUMMINGBIRD
 // Zoni - Retrieval-Augmented Generation Framework for Swift
 //
 // ZoniHummingbirdConfiguration.swift - Configuration for ZoniHummingbird integration.
@@ -7,7 +8,6 @@
 
 import Hummingbird
 import Zoni
-import ZoniServer
 
 // MARK: - ZoniHummingbirdConfiguration
 
@@ -167,3 +167,5 @@ public struct ZoniServices: Sendable {
         self.jobQueue = jobQueue
     }
 }
+
+#endif
