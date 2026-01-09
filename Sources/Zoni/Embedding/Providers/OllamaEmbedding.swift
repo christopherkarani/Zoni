@@ -172,14 +172,19 @@ public actor OllamaEmbedding: EmbeddingProvider {
     /// Generates embeddings for multiple texts.
     ///
     /// Note: Ollama doesn't support batch embedding, so texts are processed sequentially.
+    /// Cancellation is checked between each embedding to support cooperative cancellation.
     ///
     /// - Parameter texts: The texts to embed.
     /// - Returns: An array of embeddings in the same order as input.
+    /// - Throws: `CancellationError` if the task is cancelled during processing.
     public func embed(_ texts: [String]) async throws -> [Embedding] {
         var embeddings: [Embedding] = []
         embeddings.reserveCapacity(texts.count)
 
         for text in texts {
+            // Check for cancellation between each embedding request
+            try Task.checkCancellation()
+
             let embedding = try await embed(text)
             embeddings.append(embedding)
         }

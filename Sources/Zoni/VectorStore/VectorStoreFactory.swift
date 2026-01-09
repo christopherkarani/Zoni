@@ -449,6 +449,57 @@ extension VectorStoreConfig: CustomStringConvertible {
 
 // MARK: - VectorStoreConfig + Equatable
 
+// MARK: - GPU Acceleration Note
+
+extension VectorStoreFactory {
+    /// Note about GPU acceleration for Apple platforms.
+    ///
+    /// On Apple platforms (iOS/macOS), you can use `GPUAcceleratedInMemoryVectorStore`
+    /// from the `ZoniApple` module for significant performance improvements on large
+    /// datasets (>10,000 vectors).
+    ///
+    /// ## Usage with ZoniApple
+    ///
+    /// ```swift
+    /// import ZoniApple
+    ///
+    /// // Option 1: Wrap existing store
+    /// let store = VectorStoreFactory.createInMemory()
+    /// let gpuStore = store.gpuAccelerated()
+    ///
+    /// // Option 2: Create directly
+    /// let gpuStore = GPUAcceleratedInMemoryVectorStore(maxChunkCount: 100_000)
+    ///
+    /// // Search with automatic backend selection
+    /// let results = try await gpuStore.search(query: embedding, limit: 10, filter: nil)
+    ///
+    /// // Force GPU backend
+    /// let gpuResults = try await gpuStore.search(
+    ///     query: embedding,
+    ///     limit: 10,
+    ///     filter: nil,
+    ///     backend: .gpu
+    /// )
+    /// ```
+    ///
+    /// ## Performance Characteristics
+    ///
+    /// - **< 5,000 vectors**: CPU is faster (GPU dispatch overhead)
+    /// - **5,000-10,000 vectors**: Breakeven zone
+    /// - **> 10,000 vectors**: GPU provides 3-50x speedup
+    ///
+    /// See `ComputeBackend` and `BackendSelector` in ZoniApple for details.
+    public static var gpuAccelerationAvailable: Bool {
+        #if canImport(Metal)
+        return true
+        #else
+        return false
+        #endif
+    }
+}
+
+// MARK: - VectorStoreConfig + Equatable
+
 extension VectorStoreConfig: Equatable {
     /// Compares two configurations for equality.
     ///

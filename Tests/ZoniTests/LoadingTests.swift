@@ -474,8 +474,8 @@ struct TextLoaderTests {
 
 // MARK: - LoaderRegistry Tests
 
-@Suite("LoaderRegistry Tests")
-struct LoaderRegistryTests {
+@Suite("LoaderRegistry Integration Tests")
+struct LoaderRegistryIntegrationTests {
 
     // MARK: - Registration and Retrieval Tests
 
@@ -636,7 +636,7 @@ struct LoaderRegistryTests {
         await registry.register(textLoader)
         await registry.register(markdownLoader)
 
-        let extensions = await registry.registeredExtensions
+        let extensions = await registry.registeredExtensions()
 
         // TextLoader supports: txt, text
         // MarkdownLoader supports: md, markdown
@@ -700,7 +700,7 @@ struct LoaderRegistryTests {
     func emptyRegistryHasNoExtensions() async {
         let registry = LoaderRegistry()
 
-        let extensions = await registry.registeredExtensions
+        let extensions = await registry.registeredExtensions()
 
         #expect(extensions.isEmpty)
     }

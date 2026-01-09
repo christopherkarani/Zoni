@@ -156,6 +156,15 @@ extension RateLimiter {
         RateLimiter(tokensPerSecond: 20, bucketSize: 50)
     }
 
+    /// Creates a rate limiter configured for Mistral AI API limits.
+    ///
+    /// Mistral has moderate rate limits similar to other embedding providers.
+    ///
+    /// - Returns: A rate limiter configured for Mistral AI.
+    public static func forMistral() -> RateLimiter {
+        RateLimiter(tokensPerSecond: 20, bucketSize: 50)
+    }
+
     /// Creates a rate limiter with no practical limits.
     ///
     /// Useful for local providers like Ollama that don't have rate limits.

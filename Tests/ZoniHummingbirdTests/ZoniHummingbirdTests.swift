@@ -1,5 +1,6 @@
+#if HUMMINGBIRD
 import Testing
-@testable import ZoniHummingbird
+@testable import ZoniServer
 
 @Suite("ZoniHummingbird Tests")
 struct ZoniHummingbirdTests {
@@ -8,3 +9,4 @@ struct ZoniHummingbirdTests {
         #expect(!ZoniHummingbird.version.isEmpty)
     }
 }
+#endif
