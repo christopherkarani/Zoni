@@ -7,6 +7,43 @@ import Foundation
 @testable import ZoniApple
 @testable import Zoni
 
+// Helper to convert framework absence into a test skip rather than failure.
+@available(iOS 26.0, macOS 26.0, *)
+private func fmProvider(autoTruncate: Bool = true) async throws -> FoundationModelsProvider {
+    do {
+        return try await FoundationModelsProvider(autoTruncate: autoTruncate)
+    } catch AppleMLError.frameworkNotAvailable {
+        throw TestSkipReason.foundationModelsNotAvailable
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func fmProviderStrict() async throws -> FoundationModelsProvider {
+    do {
+        return try await FoundationModelsProvider.strict()
+    } catch AppleMLError.frameworkNotAvailable {
+        throw TestSkipReason.foundationModelsNotAvailable
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func fmProviderForShortTexts() async throws -> FoundationModelsProvider {
+    do {
+        return try await FoundationModelsProvider.forShortTexts()
+    } catch AppleMLError.frameworkNotAvailable {
+        throw TestSkipReason.foundationModelsNotAvailable
+    }
+}
+
+@available(iOS 26.0, macOS 26.0, *)
+private func fmProviderForDocuments() async throws -> FoundationModelsProvider {
+    do {
+        return try await FoundationModelsProvider.forDocuments()
+    } catch AppleMLError.frameworkNotAvailable {
+        throw TestSkipReason.foundationModelsNotAvailable
+    }
+}
+
 // MARK: - FoundationModelsProvider Tests
 
 /// Tests for the FoundationModelsProvider embedding provider.
@@ -35,7 +72,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         #expect(provider.name == "apple-fm")
     }
 
@@ -46,7 +83,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         #expect(provider.dimensions == 1024)
     }
 
@@ -57,7 +94,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         #expect(provider.maxTokensPerRequest == 2048)
     }
 
@@ -68,7 +105,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         #expect(provider.optimalBatchSize == 10)
     }
 
@@ -81,7 +118,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let embedding = try await provider.embed("Hello, world!")
 
         #expect(embedding.dimensions == 1024)
@@ -95,7 +132,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let embedding = try await provider.embed("Test text")
 
         #expect(embedding.model == "apple-fm")
@@ -108,7 +145,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let embedding = try await provider.embed("The quick brown fox jumps over the lazy dog")
 
         #expect(embedding.hasFiniteValues())
@@ -121,7 +158,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let embedding = try await provider.embed("Normalized vector test")
 
         // Check that magnitude is approximately 1.0
@@ -136,7 +173,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let text = "Deterministic embedding test"
 
         let embedding1 = try await provider.embed(text)
@@ -153,7 +190,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
 
         let embedding1 = try await provider.embed("The cat sat on the mat")
         let embedding2 = try await provider.embed("Quantum physics is fascinating")
@@ -171,7 +208,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let texts = ["First text", "Second text", "Third text"]
 
         let embeddings = try await provider.embed(texts)
@@ -192,7 +229,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let embeddings = try await provider.embed([])
 
         #expect(embeddings.isEmpty)
@@ -207,7 +244,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider(autoTruncate: true)
+        let provider = try await fmProvider(autoTruncate: true)
 
         // Create a very long text
         let longText = String(repeating: "word ", count: 1000)
@@ -223,7 +260,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider(autoTruncate: false)
+        let provider = try await fmProvider(autoTruncate: false)
 
         // Create a very long text (longer than maxTokensPerRequest)
         let longText = String(repeating: "word ", count: 1000)
@@ -240,7 +277,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let embedding = try await provider.embed("   \n\t  ")
 
         // Should still produce an embedding (empty text case)
@@ -256,7 +293,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
 
         let initialSize = await provider.cacheSize()
         _ = try await provider.embed("Cache test text")
@@ -272,7 +309,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
 
         _ = try await provider.embed("Text 1")
         _ = try await provider.embed("Text 2")
@@ -292,7 +329,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let healthy = await provider.healthCheck()
 
         #expect(healthy == true)
@@ -307,7 +344,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider.forShortTexts()
+        let provider = try await fmProviderForShortTexts()
         #expect(provider.name == "apple-fm")
     }
 
@@ -318,7 +355,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider.forDocuments()
+        let provider = try await fmProviderForDocuments()
         #expect(provider.name == "apple-fm")
     }
 
@@ -329,7 +366,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider.strict()
+        let provider = try await fmProviderStrict()
         #expect(provider.name == "apple-fm")
 
         // Verify it throws for long text
@@ -348,7 +385,7 @@ struct FoundationModelsProviderTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
         let description = provider.description
 
         #expect(description.contains("FoundationModelsProvider"))
@@ -367,7 +404,7 @@ struct FoundationModelsProviderTests {
 
         if !FoundationModelsProvider.isAvailable {
             await #expect(throws: AppleMLError.self) {
-                _ = try await FoundationModelsProvider()
+                _ = try await fmProvider()
             }
         }
     }
@@ -399,7 +436,7 @@ struct FoundationModelsProviderSemanticTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
 
         // Similar texts about programming
         let text1 = "Swift is a modern programming language"
@@ -426,7 +463,7 @@ struct FoundationModelsProviderSemanticTests {
             throw TestSkipReason.foundationModelsNotAvailable
         }
 
-        let provider = try await FoundationModelsProvider()
+        let provider = try await fmProvider()
 
         // Corpus of documents
         let documents = [

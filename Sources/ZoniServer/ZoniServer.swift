@@ -1,11 +1,10 @@
 // ZoniServer - Server-side extensions for Zoni
 //
-// This module will contain:
-// - Vapor integration
-// - OpenAI client implementation
-// - Anthropic client implementation
-// - ChromaDB integration
-// - Other server-side vector stores
+// This module contains:
+// - PostgreSQL/pgvector integration
+// - Server-side job processing
+// - Multi-tenancy support
+// - Server DTOs and protocols
 
 import Zoni
 

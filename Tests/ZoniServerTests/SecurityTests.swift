@@ -60,21 +60,21 @@ final class SecurityTests: XCTestCase {
 
         // Attempt to resolve tenant with invalid signature should fail
         do {
-            _ = try await manager.resolve(from: "Bearer \(maliciousToken)")
+            _ = try await manager.resolve(from: Optional("Bearer \(maliciousToken)"))
             XCTFail("Should have rejected token with invalid signature")
         } catch let error as ZoniServerError {
-            // Verify we get the correct error
-            let errorDesc = error.errorDescription ?? ""
-            XCTAssertTrue(
-                errorDesc.contains("Invalid signature") ||
-                errorDesc.contains("Invalid base64url"),
-                "Expected signature validation error, got: \(errorDesc)"
-            )
+            switch error {
+            case .invalidJWT(let reason):
+                XCTAssertTrue(reason.contains("Invalid signature") || reason.contains("Invalid base64url"),
+                              "Expected signature validation error, got: \(reason)")
+            default:
+                XCTFail("Expected invalidJWT for bad signature, got: \(error)")
+            }
         }
     }
 
-    /// Test that JWT validation without secret allows any token (development mode)
-    func testJWTWithoutSecretAcceptsAnyToken() async throws {
+    /// Test that Bearer JWT authentication is rejected when no secret is configured.
+    func testJWTWithoutSecretRejectsBearerTokens() async throws {
         let storage = InMemoryTenantStorage()
 
         // Create a tenant
@@ -92,7 +92,7 @@ final class SecurityTests: XCTestCase {
         )
         try await storage.store(tenant)
 
-        // No secret = no validation (DEVELOPMENT ONLY)
+        // No secret configured
         let manager = TenantManager(storage: storage, jwtSecret: nil)
 
         let header = """
@@ -109,11 +109,23 @@ final class SecurityTests: XCTestCase {
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
 
-        let unsignedToken = "\(header).\(payload)."
+        // Provide a 3-part token so parsing succeeds and jwtSecret enforcement is tested.
+        let tokenWithPlaceholderSignature = "\(header).\(payload).placeholder"
 
-        // This should succeed (but is INSECURE for production)
-        let resolved = try await manager.resolve(from: "Bearer \(unsignedToken)")
-        XCTAssertEqual(resolved.tenantId, "tenant_123")
+        do {
+            _ = try await manager.resolve(from: Optional("Bearer \(tokenWithPlaceholderSignature)"))
+            XCTFail("Bearer JWT should be rejected when jwtSecret is not configured")
+        } catch let error as ZoniServerError {
+            switch error {
+            case .invalidJWT(let reason):
+                XCTAssertTrue(
+                    reason.contains("requires a configured jwtSecret"),
+                    "Expected missing-jwtSecret error, got: \(reason)"
+                )
+            default:
+                XCTFail("Expected invalidJWT for missing jwtSecret, got: \(error)")
+            }
+        }
     }
 
     /// Test JWT expiration enforcement
@@ -167,10 +179,10 @@ final class SecurityTests: XCTestCase {
 
         // Should reject expired token
         do {
-            _ = try await manager.resolve(from: "Bearer \(expiredToken)")
+            _ = try await manager.resolve(from: Optional("Bearer \(expiredToken)"))
             XCTFail("Should have rejected expired token")
         } catch let error as ZoniServerError {
-            // Verify it's a token expired error
+            // Expiration should be surfaced explicitly.
             switch error {
             case .tokenExpired:
                 break // Expected
@@ -377,6 +389,40 @@ final class SecurityTests: XCTestCase {
         // All tenants should still be accessible (from storage)
         let tenant1 = try await manager.resolve(from: "key_1")
         XCTAssertEqual(tenant1.tenantId, "tenant_1")
+    }
+
+    // MARK: - API Key Hashing Tests
+
+    /// Test keyed API key hashing and verification helpers.
+    func testApiKeyHashingWithPepper() {
+        let apiKey = "sk-test-123"
+        let pepperA = "pepper-a-secret-32-bytes-minimum-0001"
+        let pepperB = "pepper-b-secret-32-bytes-minimum-0002"
+
+        let hashA1 = TenantManager.hashApiKey(apiKey, pepper: pepperA)
+        let hashA2 = TenantManager.hashApiKey(apiKey, pepper: pepperA)
+        let hashB = TenantManager.hashApiKey(apiKey, pepper: pepperB)
+
+        XCTAssertNotEqual(hashA1, hashA2, "Salted hashes should differ even for same key+pepper")
+        XCTAssertNotEqual(hashA1, hashB, "Different peppers should produce different hashes")
+        XCTAssertTrue(hashA1.hasPrefix("pbkdf2-sha256$"), "Stored hash should include scheme prefix")
+
+        XCTAssertTrue(
+            TenantManager.verifyApiKey(apiKey, storedHash: hashA1, pepper: pepperA),
+            "Verification should pass for matching key + pepper"
+        )
+        XCTAssertTrue(
+            TenantManager.verifyApiKey(apiKey, storedHash: hashA2, pepper: pepperA),
+            "Verification should pass for independently salted hashes too"
+        )
+        XCTAssertFalse(
+            TenantManager.verifyApiKey("sk-other", storedHash: hashA1, pepper: pepperA),
+            "Verification should fail for wrong key"
+        )
+        XCTAssertFalse(
+            TenantManager.verifyApiKey(apiKey, storedHash: hashA1, pepper: pepperB),
+            "Verification should fail for wrong pepper"
+        )
     }
 }
 

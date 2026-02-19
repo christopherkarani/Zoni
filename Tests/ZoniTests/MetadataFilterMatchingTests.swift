@@ -71,6 +71,14 @@ struct MetadataFilterMatchingTests {
         #expect(filter.matches(acceptedChunk))
     }
 
+    @Test("notEquals filter returns false when field is missing")
+    func testNotEqualsMissingFieldReturnsFalse() {
+        let filter = MetadataFilter.notEquals("missingField", "value")
+        let chunk = makeChunk()
+
+        #expect(!filter.matches(chunk))
+    }
+
     // MARK: - Numeric Comparison Tests
 
     @Test("greaterThan filter matches with int value")
@@ -145,6 +153,14 @@ struct MetadataFilterMatchingTests {
 
         #expect(!filter.matches(rejectedChunk))
         #expect(filter.matches(acceptedChunk))
+    }
+
+    @Test("notIn filter returns false when field is missing")
+    func testNotInMissingFieldReturnsFalse() {
+        let filter = MetadataFilter.notIn("missingField", ["doc-1"])
+        let chunk = makeChunk()
+
+        #expect(!filter.matches(chunk))
     }
 
     // MARK: - String Operation Tests

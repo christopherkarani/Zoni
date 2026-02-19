@@ -17,7 +17,6 @@ Zoni is a comprehensive, production-ready RAG framework built with Swift 6.0. It
 - **Advanced Retrieval** - Hybrid search, multi-query expansion, MMR diversity, reranking
 - **Query Engine** - Multiple response synthesis strategies (compact, refine, tree-summarize)
 - **Agent Tools** - SwiftAgents-compatible tools for RAG operations
-- **Server Integration** - First-class Vapor and Hummingbird framework support
 - **Multi-Tenancy** - Built-in tenant isolation and job queue system
 - **Apple Native** - On-device ML with Foundation Models, NLEmbedding, MLX, and PDFKit
 - **Swift 6 Concurrency** - Actor-based design with full async/await and Sendable support
@@ -40,8 +39,6 @@ Zoni provides multiple products for different use cases:
 |---------|-------------|-----------|
 | **Zoni** | Core RAG library with document loading, chunking, embeddings, and vector stores | Linux, macOS, iOS, tvOS, watchOS, visionOS |
 | **ZoniServer** | Multi-tenancy, job queue system, and server-side abstractions | Linux, macOS |
-| **ZoniVapor** | Vapor framework integration with controllers and middleware | Linux, macOS |
-| **ZoniHummingbird** | Hummingbird framework integration with routes and middleware | Linux, macOS |
 | **ZoniApple** | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) | macOS 14+, iOS 17+ |
 | **ZoniAgents** | SwiftAgents integration layer for agentic workflows | Linux, macOS, iOS |
 
@@ -136,44 +133,10 @@ for try await event in pipeline.streamQuery("Summarize the key points") {
 }
 ```
 
-### Vapor Server with Multi-Tenancy
-
-Build a production RAG API with Vapor:
-
-```swift
-import Vapor
-import ZoniVapor
-import ZoniServer
-
-func configure(_ app: Application) async throws {
-    // Setup multi-tenant RAG
-    let tenantManager = try await TenantManager(
-        postgres: PostgresConfiguration(
-            host: "localhost",
-            database: "zoni"
-        )
-    )
-
-    app.zoni.tenantManager = tenantManager
-
-    // Register RAG routes with JWT authentication
-    try app.register(collection: ZoniController())
-
-    // Enable streaming support
-    app.middleware.use(StreamingMiddleware())
-}
-
-// Your routes support:
-// POST /api/v1/documents/ingest - Ingest documents
-// POST /api/v1/query - Query knowledge base
-// POST /api/v1/query/stream - Streaming queries
-// GET /api/v1/stats - Pipeline statistics
-```
-
 ## Documentation
 
 - [Getting Started Guide](Documentation/GettingStarted.md) - Detailed setup and basic usage
-- [Server Guide](Documentation/ServerGuide.md) - Building RAG APIs with Vapor/Hummingbird
+- [Server Guide](Documentation/ServerGuide.md) - Building RAG APIs with ZoniServer
 - [Apple Platforms Guide](Documentation/AppleGuide.md) - On-device ML and iOS/macOS integration
 - [Advanced Retrieval](Documentation/AdvancedRetrieval.md) - Hybrid search, reranking, MMR
 - [API Reference](Documentation/API/) - Complete API documentation
@@ -322,8 +285,7 @@ Check out the [Examples](Examples/) directory for complete sample projects:
 
 - **CLI RAG Tool** - Command-line document search
 - **iOS Knowledge Base** - SwiftUI app with on-device RAG
-- **Vapor API Server** - Multi-tenant RAG API
-- **Hummingbird Microservice** - Lightweight RAG service
+- **Server RAG API** - Multi-tenant RAG API
 - **Agent Workflows** - Using ZoniAgents for complex workflows
 
 ## Testing
@@ -367,8 +329,6 @@ Built with Swift 6.0 and powered by:
 - [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking
 - [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface
 - [PostgresNIO](https://github.com/vapor/postgres-nio) - PostgreSQL driver
-- [Vapor](https://github.com/vapor/vapor) - Web framework
-- [Hummingbird](https://github.com/hummingbird-project/hummingbird) - Swift HTTP server
 - [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML
 - [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec
 

@@ -118,7 +118,7 @@ extension MetadataFilter {
             return value == expected
 
         case .notEquals(let field, let expected):
-            guard let value = getValue(field, from: chunk) else { return true }
+            guard let value = getValue(field, from: chunk) else { return false }
             return value != expected
 
         case .greaterThan(let field, let threshold):
@@ -146,7 +146,7 @@ extension MetadataFilter {
             return allowedValues.contains(value)
 
         case .notIn(let field, let excludedValues):
-            guard let value = getValue(field, from: chunk) else { return true }
+            guard let value = getValue(field, from: chunk) else { return false }
             return !excludedValues.contains(value)
 
         case .contains(let field, let substring):
@@ -196,7 +196,7 @@ extension MetadataFilter {
             return value == expected
 
         case .notEquals(let field, let expected):
-            guard let value = metadata[field] else { return true }
+            guard let value = metadata[field] else { return false }
             return value != expected
 
         case .greaterThan(let field, let threshold):
@@ -224,7 +224,7 @@ extension MetadataFilter {
             return allowedValues.contains(value)
 
         case .notIn(let field, let excludedValues):
-            guard let value = metadata[field] else { return true }
+            guard let value = metadata[field] else { return false }
             return !excludedValues.contains(value)
 
         case .contains(let field, let substring):

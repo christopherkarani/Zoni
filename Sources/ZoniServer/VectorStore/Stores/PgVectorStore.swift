@@ -766,10 +766,13 @@ public actor PgVectorStore: VectorStore {
 
         // Build WHERE clause from filter
         var whereClause = ""
+        var queryBinds: [Any] = [vectorString, limit]
         if let filter = filter {
-            let filterSQL = buildFilterSQL(filter)
+            let filterClause = buildFilterSQL(filter, startingAt: 3)
+            let filterSQL = filterClause.sql
             if !filterSQL.isEmpty {
                 whereClause = "WHERE \(filterSQL)"
+                queryBinds.append(contentsOf: filterClause.binds)
             }
         }
 
@@ -788,7 +791,7 @@ public actor PgVectorStore: VectorStore {
             let rows = try await connection.query(
                 PostgresQuery(
                     unsafeSQL: searchSQL,
-                    binds: PostgresBindings(encodable: [vectorString, limit])
+                    binds: PostgresBindings(encodable: queryBinds)
                 ),
                 logger: logger
             )
@@ -901,7 +904,8 @@ public actor PgVectorStore: VectorStore {
     /// try await store.delete(filter: filter)
     /// ```
     public func delete(filter: MetadataFilter) async throws {
-        let filterSQL = buildFilterSQL(filter)
+        let filterClause = buildFilterSQL(filter, startingAt: 1)
+        let filterSQL = filterClause.sql
         guard !filterSQL.isEmpty else {
             throw ZoniError.insertionFailed(
                 reason: "Cannot delete with empty filter - this would delete all records"
@@ -911,7 +915,13 @@ public actor PgVectorStore: VectorStore {
         let deleteSQL = "DELETE FROM \(configuration.tableName) WHERE \(filterSQL)"
 
         do {
-            try await connection.query(PostgresQuery(unsafeSQL: deleteSQL), logger: logger)
+            try await connection.query(
+                PostgresQuery(
+                    unsafeSQL: deleteSQL,
+                    binds: PostgresBindings(encodable: filterClause.binds)
+                ),
+                logger: logger
+            )
         } catch {
             throw ZoniError.insertionFailed(
                 reason: "Failed to delete chunks with filter: \(error.localizedDescription)"
@@ -1012,9 +1022,27 @@ public actor PgVectorStore: VectorStore {
 
     // MARK: - Filter SQL Generation
 
-    /// Builds a SQL WHERE clause from a MetadataFilter.
-    private func buildFilterSQL(_ filter: MetadataFilter) -> String {
-        let clauses = filter.conditions.map { conditionToSQL($0) }
+    private struct FilterBuildState {
+        var nextPlaceholder: Int
+        var binds: [Any]
+    }
+
+    /// Builds a SQL WHERE clause and bindings from a MetadataFilter.
+    private func buildFilterSQL(
+        _ filter: MetadataFilter,
+        startingAt startIndex: Int
+    ) -> (sql: String, binds: [Any]) {
+        var state = FilterBuildState(nextPlaceholder: startIndex, binds: [])
+        let sql = buildFilterSQL(filter, state: &state)
+        return (sql: sql, binds: state.binds)
+    }
+
+    /// Builds a SQL fragment from filter conditions.
+    private func buildFilterSQL(
+        _ filter: MetadataFilter,
+        state: inout FilterBuildState
+    ) -> String {
+        let clauses = filter.conditions.map { conditionToSQL($0, state: &state) }
         return clauses.joined(separator: " AND ")
     }
 
@@ -1022,113 +1050,164 @@ public actor PgVectorStore: VectorStore {
     ///
     /// Field names are validated to prevent SQL injection. Invalid field names
     /// result in a `TRUE` condition (no filtering) to fail safely.
-    private func conditionToSQL(_ condition: MetadataFilter.Operator) -> String {
+    private func conditionToSQL(
+        _ condition: MetadataFilter.Operator,
+        state: inout FilterBuildState
+    ) -> String {
         switch condition {
         case .equals(let field, let value):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) = \(sqlValue(value))"
+            let fieldSQL = sqlFieldExpression(field)
+            if value.isNull {
+                return "\(fieldSQL) IS NULL"
             }
-            return "metadata->>'\(escapeString(field))' = \(sqlTextValue(value))"
+            let placeholder = bind(
+                isReservedField(field) ? sqlBindableValue(value) : sqlBindableTextValue(value),
+                state: &state
+            )
+            return "\(fieldSQL) = \(placeholder)"
 
         case .notEquals(let field, let value):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) != \(sqlValue(value))"
+            let fieldSQL = sqlFieldExpression(field)
+            if value.isNull {
+                return "\(fieldSQL) IS NOT NULL"
             }
-            return "metadata->>'\(escapeString(field))' != \(sqlTextValue(value))"
+            let placeholder = bind(
+                isReservedField(field) ? sqlBindableValue(value) : sqlBindableTextValue(value),
+                state: &state
+            )
+            return "\(fieldSQL) != \(placeholder)"
 
         case .greaterThan(let field, let value):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) > \(value)"
-            }
-            return "(metadata->>'\(escapeString(field))')::float > \(value)"
+            let fieldSQL = sqlNumericFieldExpression(field)
+            let placeholder = bind(value, state: &state)
+            return "\(fieldSQL) > \(placeholder)"
 
         case .lessThan(let field, let value):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) < \(value)"
-            }
-            return "(metadata->>'\(escapeString(field))')::float < \(value)"
+            let fieldSQL = sqlNumericFieldExpression(field)
+            let placeholder = bind(value, state: &state)
+            return "\(fieldSQL) < \(placeholder)"
 
         case .greaterThanOrEqual(let field, let value):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) >= \(value)"
-            }
-            return "(metadata->>'\(escapeString(field))')::float >= \(value)"
+            let fieldSQL = sqlNumericFieldExpression(field)
+            let placeholder = bind(value, state: &state)
+            return "\(fieldSQL) >= \(placeholder)"
 
         case .lessThanOrEqual(let field, let value):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) <= \(value)"
-            }
-            return "(metadata->>'\(escapeString(field))')::float <= \(value)"
+            let fieldSQL = sqlNumericFieldExpression(field)
+            let placeholder = bind(value, state: &state)
+            return "\(fieldSQL) <= \(placeholder)"
 
         case .in(let field, let values):
             guard isValidFieldName(field) else { return "TRUE" }
-            let valueList = values.map { sqlValue($0) }.joined(separator: ", ")
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) IN (\(valueList))"
+            guard !values.isEmpty else { return "FALSE" }
+
+            let fieldSQL = sqlFieldExpression(field)
+            let hasNull = values.contains(where: \.isNull)
+            let nonNullValues = values.filter { !$0.isNull }
+            var parts: [String] = []
+
+            if !nonNullValues.isEmpty {
+                let placeholders = nonNullValues.map {
+                    bind(
+                        isReservedField(field) ? sqlBindableValue($0) : sqlBindableTextValue($0),
+                        state: &state
+                    )
+                }
+                parts.append("\(fieldSQL) IN (\(placeholders.joined(separator: ", ")))")
             }
-            return "metadata->>'\(escapeString(field))' IN (\(values.map { sqlTextValue($0) }.joined(separator: ", ")))"
+            if hasNull {
+                parts.append("\(fieldSQL) IS NULL")
+            }
+
+            return parts.count == 1 ? parts[0] : "(" + parts.joined(separator: " OR ") + ")"
 
         case .notIn(let field, let values):
             guard isValidFieldName(field) else { return "TRUE" }
-            let valueList = values.map { sqlValue($0) }.joined(separator: ", ")
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) NOT IN (\(valueList))"
+            guard !values.isEmpty else { return "TRUE" }
+
+            let fieldSQL = sqlFieldExpression(field)
+            let hasNull = values.contains(where: \.isNull)
+            let nonNullValues = values.filter { !$0.isNull }
+            var parts: [String] = []
+
+            if !nonNullValues.isEmpty {
+                let placeholders = nonNullValues.map {
+                    bind(
+                        isReservedField(field) ? sqlBindableValue($0) : sqlBindableTextValue($0),
+                        state: &state
+                    )
+                }
+                parts.append("\(fieldSQL) NOT IN (\(placeholders.joined(separator: ", ")))")
             }
-            return "metadata->>'\(escapeString(field))' NOT IN (\(values.map { sqlTextValue($0) }.joined(separator: ", ")))"
+            if hasNull {
+                parts.append("\(fieldSQL) IS NOT NULL")
+            }
+
+            return parts.count == 1 ? parts[0] : "(" + parts.joined(separator: " AND ") + ")"
 
         case .contains(let field, let substring):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) LIKE '%\(escapeLikePattern(substring))%' ESCAPE '\\'"
-            }
-            return "metadata->>'\(escapeString(field))' LIKE '%\(escapeLikePattern(substring))%' ESCAPE '\\'"
+            let fieldSQL = sqlFieldExpression(field)
+            let pattern = "%\(escapeLikePattern(substring))%"
+            let placeholder = bind(pattern, state: &state)
+            return "\(fieldSQL) LIKE \(placeholder) ESCAPE '\\'"
 
         case .startsWith(let field, let prefix):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) LIKE '\(escapeLikePattern(prefix))%' ESCAPE '\\'"
-            }
-            return "metadata->>'\(escapeString(field))' LIKE '\(escapeLikePattern(prefix))%' ESCAPE '\\'"
+            let fieldSQL = sqlFieldExpression(field)
+            let pattern = "\(escapeLikePattern(prefix))%"
+            let placeholder = bind(pattern, state: &state)
+            return "\(fieldSQL) LIKE \(placeholder) ESCAPE '\\'"
 
         case .endsWith(let field, let suffix):
             guard isValidFieldName(field) else { return "TRUE" }
-            if isReservedField(field) {
-                return "\(sqlFieldName(field)) LIKE '%\(escapeLikePattern(suffix))' ESCAPE '\\'"
-            }
-            return "metadata->>'\(escapeString(field))' LIKE '%\(escapeLikePattern(suffix))' ESCAPE '\\'"
+            let fieldSQL = sqlFieldExpression(field)
+            let pattern = "%\(escapeLikePattern(suffix))"
+            let placeholder = bind(pattern, state: &state)
+            return "\(fieldSQL) LIKE \(placeholder) ESCAPE '\\'"
 
         case .exists(let field):
             guard isValidFieldName(field) else { return "TRUE" }
             if isReservedField(field) {
                 return "\(sqlFieldName(field)) IS NOT NULL"
             }
-            return "metadata ? '\(escapeString(field))'"
+            let placeholder = bind(field, state: &state)
+            return "metadata ? \(placeholder)"
 
         case .notExists(let field):
             guard isValidFieldName(field) else { return "TRUE" }
             if isReservedField(field) {
                 return "\(sqlFieldName(field)) IS NULL"
             }
-            return "NOT (metadata ? '\(escapeString(field))')"
+            let placeholder = bind(field, state: &state)
+            return "NOT (metadata ? \(placeholder))"
 
         case .and(let filters):
-            let parts = filters.flatMap { $0.conditions.map { conditionToSQL($0) } }
+            let parts = filters.flatMap { $0.conditions.map { conditionToSQL($0, state: &state) } }
             return "(" + parts.joined(separator: " AND ") + ")"
 
         case .or(let filters):
-            let parts = filters.flatMap { $0.conditions.map { conditionToSQL($0) } }
+            let parts = filters.flatMap { $0.conditions.map { conditionToSQL($0, state: &state) } }
             return "(" + parts.joined(separator: " OR ") + ")"
 
         case .not(let filter):
-            let parts = filter.conditions.map { conditionToSQL($0) }
+            let parts = filter.conditions.map { conditionToSQL($0, state: &state) }
             return "NOT (" + parts.joined(separator: " AND ") + ")"
         }
+    }
+
+    /// Creates a positional bind placeholder and stores the associated value.
+    private func bind(_ value: Any, state: inout FilterBuildState) -> String {
+        let placeholder = "$\(state.nextPlaceholder)"
+        state.nextPlaceholder += 1
+        state.binds.append(value)
+        return placeholder
     }
 
     /// Checks if a field name is a reserved table column.
@@ -1155,43 +1234,52 @@ public actor PgVectorStore: VectorStore {
         }
     }
 
-    /// Converts a MetadataValue to a SQL literal.
-    private func sqlValue(_ value: MetadataValue) -> String {
+    /// Returns a field expression for equality/string operations.
+    private func sqlFieldExpression(_ field: String) -> String {
+        if isReservedField(field) {
+            return sqlFieldName(field)
+        }
+        return "metadata->>'\(field)'"
+    }
+
+    /// Returns a field expression for numeric operations.
+    private func sqlNumericFieldExpression(_ field: String) -> String {
+        if isReservedField(field) {
+            return sqlFieldName(field)
+        }
+        return "(metadata->>'\(field)')::float"
+    }
+
+    /// Converts a MetadataValue into a bindable representation for reserved fields.
+    private func sqlBindableValue(_ value: MetadataValue) -> Any {
         switch value {
-        case .null: return "NULL"
-        case .bool(let v): return v ? "TRUE" : "FALSE"
+        case .null: return NSNull()
+        case .bool(let v): return v
+        case .int(let v): return v
+        case .double(let v): return v
+        case .string(let v): return v
+        case .array, .dictionary: return "{}"
+        }
+    }
+
+    /// Converts a MetadataValue to a bindable text representation for JSONB comparisons.
+    private func sqlBindableTextValue(_ value: MetadataValue) -> Any {
+        switch value {
+        case .null: return NSNull()
+        case .bool(let v): return v ? "true" : "false"
         case .int(let v): return String(v)
         case .double(let v): return String(v)
-        case .string(let v): return "'\(escapeString(v))'"
-        case .array, .dictionary: return "'{}'"
+        case .string(let v): return v
+        case .array, .dictionary: return "{}"
         }
-    }
-
-    /// Converts a MetadataValue to a SQL text literal for JSONB text comparisons.
-    private func sqlTextValue(_ value: MetadataValue) -> String {
-        switch value {
-        case .null: return "NULL"
-        case .bool(let v): return "'\(v ? "true" : "false")'"
-        case .int(let v): return "'\(v)'"
-        case .double(let v): return "'\(v)'"
-        case .string(let v): return "'\(escapeString(v))'"
-        case .array, .dictionary: return "'{}'"
-        }
-    }
-
-    /// Escapes a string for safe inclusion in SQL.
-    private func escapeString(_ s: String) -> String {
-        s.replacingOccurrences(of: "'", with: "''")
-         .replacingOccurrences(of: "\\", with: "\\\\")
     }
 
     /// Escapes a string for safe use in LIKE patterns.
     ///
-    /// This escapes SQL string characters (single quotes, backslashes) as well as
-    /// LIKE metacharacters (% and _) to prevent SQL injection via pattern matching.
+    /// This escapes only LIKE metacharacters and escape characters.
+    /// SQL quoting is handled by parameter binding.
     private func escapeLikePattern(_ s: String) -> String {
-        s.replacingOccurrences(of: "'", with: "''")
-         .replacingOccurrences(of: "\\", with: "\\\\")
+        s.replacingOccurrences(of: "\\", with: "\\\\")
          .replacingOccurrences(of: "%", with: "\\%")
          .replacingOccurrences(of: "_", with: "\\_")
     }

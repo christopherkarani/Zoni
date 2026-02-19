@@ -8,6 +8,7 @@
 import Testing
 import Foundation
 @testable import ZoniServer
+@testable import Zoni
 
 // MARK: - Job Queue Tests
 
@@ -790,6 +791,61 @@ struct JobQueueTests {
 
             #expect(jobWithChunks.description.contains("chunks: 3"))
             #expect(jobWithoutChunks.description.contains("chunks: all"))
+        }
+    }
+
+    // MARK: - IngestJob Tests
+
+    @Suite("IngestJob Tests")
+    struct IngestJobTests {
+        @Test("IngestJob stores tenant metadata on all chunks")
+        func testIngestJobStoresTenantMetadata() async throws {
+            let store = InMemoryVectorStore()
+            let embeddingProvider = MockEmbedding(dimensions: 16)
+            let tenantId = "tenant-alpha"
+
+            let services = JobServices(
+                embeddingProvider: embeddingProvider,
+                vectorStoreFactory: { _ in store },
+                chunkerFactory: { FixedSizeChunker(chunkSize: 24, chunkOverlap: 0) },
+                documentLoaderFactory: { _ in nil }
+            )
+
+            let job = IngestJob(
+                tenantId: tenantId,
+                documents: [
+                    DocumentDTO(content: "Alpha beta gamma. Delta epsilon zeta.")
+                ]
+            )
+
+            let context = JobExecutionContext(
+                jobId: job.id,
+                tenantId: tenantId,
+                services: services,
+                reportProgress: { _ in },
+                isCancelled: { false }
+            )
+
+            let result = try await job.execute(context: context)
+            #expect((result.chunksCreated ?? 0) > 0)
+
+            let queryEmbedding = try await embeddingProvider.embed("alpha")
+            let matchingTenantResults = try await store.search(
+                query: queryEmbedding,
+                limit: 50,
+                filter: .equals(TenantIsolatedVectorStore.tenantMetadataKey, .string(tenantId))
+            )
+            let otherTenantResults = try await store.search(
+                query: queryEmbedding,
+                limit: 50,
+                filter: .equals(TenantIsolatedVectorStore.tenantMetadataKey, .string("tenant-other"))
+            )
+
+            #expect(!matchingTenantResults.isEmpty)
+            #expect(matchingTenantResults.allSatisfy {
+                $0.chunk.metadata.custom[TenantIsolatedVectorStore.tenantMetadataKey] == .string(tenantId)
+            })
+            #expect(otherTenantResults.isEmpty)
         }
     }
 }

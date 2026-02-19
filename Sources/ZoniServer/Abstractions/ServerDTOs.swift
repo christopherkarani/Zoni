@@ -874,21 +874,6 @@ public struct QueryResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if HUMMINGBIRD
-import Hummingbird
-import NIOCore
-
-extension QueryResponse: ResponseGenerator {
-    public func response(from request: Request, context: some RequestContext) throws -> Response {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(self)
-        var buffer = ByteBuffer()
-        buffer.writeBytes(data)
-        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: buffer))
-    }
-}
-#endif
 
 // MARK: - Ingest DTOs
 

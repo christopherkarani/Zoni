@@ -33,6 +33,11 @@ let package = Package(
             name: "ZoniAgents",
             targets: ["ZoniAgents"]
         ),
+        // Optional Conduit inference integration layer
+        .library(
+            name: "ZoniConduit",
+            targets: ["ZoniConduit"]
+        ),
     ],
     traits: [
         "vapor",
@@ -42,6 +47,7 @@ let package = Package(
         // Core dependencies
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
         .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.20.0"),
+        .package(url: "https://github.com/christopherkarani/Conduit.git", from: "1.0.1"),
 
         // Phase 3: Vector Store dependencies
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.14.0"),
@@ -77,6 +83,20 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift"),
             ],
             path: "Sources/Zoni"
+        ),
+
+        // Optional Conduit integration target
+        .target(
+            name: "ZoniConduit",
+            dependencies: [
+                "Zoni",
+                .product(
+                    name: "Conduit",
+                    package: "Conduit",
+                    condition: .when(platforms: [.macOS, .iOS, .visionOS])
+                ),
+            ],
+            path: "Sources/ZoniConduit"
         ),
 
         // Server extensions (shared abstractions, multi-tenancy, job system)
@@ -138,32 +158,6 @@ let package = Package(
             name: "ZoniServerTests",
             dependencies: ["ZoniServer"],
             path: "Tests/ZoniServerTests"
-        ),
-
-        // Vapor integration tests
-        .testTarget(
-            name: "ZoniVaporTests",
-            dependencies: [
-                "ZoniServer",
-                .product(name: "XCTVapor", package: "vapor", condition: .when(traits: ["vapor"])),
-            ],
-            path: "Tests/ZoniVaporTests",
-            swiftSettings: [
-                .define("VAPOR", .when(traits: ["vapor"]))
-            ]
-        ),
-
-        // Hummingbird integration tests
-        .testTarget(
-            name: "ZoniHummingbirdTests",
-            dependencies: [
-                "ZoniServer",
-                .product(name: "HummingbirdTesting", package: "hummingbird", condition: .when(traits: ["hummingbird"])),
-            ],
-            path: "Tests/ZoniHummingbirdTests",
-            swiftSettings: [
-                .define("HUMMINGBIRD", .when(traits: ["hummingbird"]))
-            ]
         ),
 
         // Apple platform extension tests (Phase 5B)

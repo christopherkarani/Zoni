@@ -89,10 +89,8 @@ public actor TenantManager: TenantResolver {
     /// - Parameters:
     ///   - storage: The storage backend for tenant data persistence.
     ///   - jwtSecret: Optional secret for validating JWT token signatures.
-    ///     **⚠️ SECURITY WARNING**: When `nil`, JWT signature validation is **DISABLED**.
-    ///     This allows **ANY** JWT token to be accepted without verification, enabling
-    ///     token forgery attacks. **ONLY** use `nil` in development/testing environments.
-    ///     **ALWAYS** provide a secret (≥32 bytes) in production deployments.
+    ///     Bearer JWT authentication requires this secret. If `nil`, Bearer JWT
+    ///     requests are rejected and only API key authentication is available.
     ///   - cacheTTL: The duration for which resolved tenants are cached.
     ///     Default is 5 minutes (300 seconds).
     ///   - maxCacheSize: Maximum number of entries in the cache. When this limit
@@ -107,10 +105,10 @@ public actor TenantManager: TenantResolver {
     /// - **Storage**: Store in environment variables, never in source code
     /// - **Rotation**: Implement secret rotation strategy
     ///
-    /// ### Example (Development - INSECURE)
+    /// ### Example (API key only)
     /// ```swift
-    /// // ⚠️ DEVELOPMENT ONLY - No signature validation
-    /// let devManager = TenantManager(storage: myStorage, jwtSecret: nil)
+    /// // Bearer JWTs are rejected when no JWT secret is configured
+    /// let manager = TenantManager(storage: myStorage, jwtSecret: nil)
     /// ```
     ///
     /// ### Example (Production - SECURE)
@@ -295,17 +293,25 @@ public actor TenantManager: TenantResolver {
             }
         }
 
-        // Validate signature if secret is configured
-        if let secret = jwtSecret {
-            let signatureValid = validateJWTSignature(
-                header: String(parts[0]),
-                payload: String(parts[1]),
-                signature: String(parts[2]),
-                secret: secret
+        guard let secret = jwtSecret, !secret.isEmpty else {
+            throw ZoniServerError.invalidJWT(
+                reason: "Bearer JWT authentication requires a configured jwtSecret"
             )
-            guard signatureValid else {
-                throw ZoniServerError.invalidJWT(reason: "Invalid signature")
-            }
+        }
+        guard secret.utf8.count >= 32 else {
+            throw ZoniServerError.invalidJWT(
+                reason: "Configured jwtSecret is too short; minimum length is 32 bytes"
+            )
+        }
+
+        let signatureValid = validateJWTSignature(
+            header: String(parts[0]),
+            payload: String(parts[1]),
+            signature: String(parts[2]),
+            secret: secret
+        )
+        guard signatureValid else {
+            throw ZoniServerError.invalidJWT(reason: "Invalid signature")
         }
 
         // Resolve tenant from storage using the tenant_id claim
@@ -471,9 +477,6 @@ public actor TenantManager: TenantResolver {
         }
         let key = SymmetricKey(data: secretData)
 
-        // Compute the expected signature using HMAC-SHA256
-        let computedSignature = HMAC<SHA256>.authenticationCode(for: messageData, using: key)
-
         // Use isValidAuthenticationCode for constant-time comparison to prevent timing attacks
         return HMAC<SHA256>.isValidAuthenticationCode(signatureData, authenticating: messageData, using: key)
     }
@@ -482,57 +485,156 @@ public actor TenantManager: TenantResolver {
 // MARK: - API Key Hashing Utilities
 
 extension TenantManager {
-    /// Hashes an API key using SHA256.
+    private static let apiKeyHashScheme = "pbkdf2-sha256"
+    private static let apiKeyHashIterations = 120_000
+    private static let apiKeySaltLength = 16
+    private static let apiKeyDerivedKeyLength = 32
+
+    /// Hashes an API key using PBKDF2-HMAC-SHA256 with salt and a secret pepper.
     ///
-    /// **⚠️ CRITICAL SECURITY WARNING - DO NOT USE IN PRODUCTION ⚠️**
+    /// This intentionally uses a slow KDF to increase brute-force cost if hashes
+    /// are leaked. The output format is:
+    /// `pbkdf2-sha256$<iterations>$<salt-hex>$<derived-key-hex>`
     ///
-    /// This method is **DEPRECATED** and **INSECURE** for production use.
-    /// SHA256 is a fast cryptographic hash function, making it vulnerable to:
-    /// - **Brute-force attacks**: Modern GPUs can compute billions of SHA256 hashes per second
-    /// - **Rainbow table attacks**: Pre-computed hash tables can crack common keys instantly
-    /// - **No salt**: Without unique salts, identical keys produce identical hashes
+    /// - Parameters:
+    ///   - apiKey: The API key to hash.
+    ///   - pepper: Secret pepper stored outside the database (for example env var).
+    /// - Returns: Encoded salted hash string suitable for database storage.
+    public static func hashApiKey(_ apiKey: String, pepper: String) -> String {
+        let salt = randomBytes(count: Self.apiKeySaltLength)
+        let password = Data((pepper + ":" + apiKey).utf8)
+        let derived = pbkdf2SHA256(
+            password: password,
+            salt: Data(salt),
+            iterations: Self.apiKeyHashIterations,
+            keyLength: Self.apiKeyDerivedKeyLength
+        )
+        return [
+            Self.apiKeyHashScheme,
+            String(Self.apiKeyHashIterations),
+            encodeHex(Data(salt)),
+            encodeHex(derived)
+        ].joined(separator: "$")
+    }
+
+    /// Verifies an API key against a stored PBKDF2 hash in constant time.
     ///
-    /// ## Required Action for Production
-    ///
-    /// **DO NOT USE THIS METHOD** in production systems. Use a proper password hashing
-    /// algorithm with salt and work factor:
-    ///
-    /// ### Recommended Alternatives
-    /// - **Argon2id** (BEST): Winner of Password Hashing Competition, memory-hard, GPU-resistant
-    /// - **bcrypt**: Industry standard, battle-tested, configurable work factor (minimum cost 12)
-    /// - **scrypt**: Memory-hard alternative, good choice if Argon2 unavailable
-    ///
-    /// ### Example with bcrypt (Swift implementation):
-    /// ```swift
-    /// // Add dependency: .package(url: "https://github.com/swift-server-community/swift-bcrypt.git", ...)
-    /// import Bcrypt
-    ///
-    /// // Hash API key with bcrypt (cost factor 12 or higher)
-    /// let salt = try Bcrypt.Salt()
-    /// let hashedKey = try Bcrypt.hash(apiKey, salt: salt)
-    ///
-    /// // Verify API key (constant-time comparison built-in)
-    /// let isValid = try Bcrypt.verify(providedKey, created: hashedKey)
-    /// ```
-    ///
-    /// ### Migration Strategy
-    /// If you're currently using this SHA256 method:
-    /// 1. **Immediately** rotate all API keys (generate new ones)
-    /// 2. Hash new keys with bcrypt/Argon2 (cost factor ≥ 12)
-    /// 3. Force users to use the new keys
-    /// 4. Delete all SHA256-hashed keys from your database
-    /// 5. Remove all calls to this deprecated method
-    ///
-    /// - Parameter apiKey: The API key to hash.
-    /// - Returns: The hexadecimal representation of the SHA256 hash.
-    ///
-    /// - Warning: **DO NOT USE IN PRODUCTION**. This method exists only for
-    ///   backward compatibility and testing. It will be removed in a future version.
-    @available(*, deprecated, message: "INSECURE: Use bcrypt, Argon2, or scrypt instead. SHA256 is vulnerable to brute-force attacks.")
+    /// - Parameters:
+    ///   - apiKey: The API key to verify.
+    ///   - storedHash: Stored hash string in `hashApiKey(_:pepper:)` format.
+    ///   - pepper: Secret pepper used when hashing.
+    /// - Returns: `true` if the key matches the stored hash.
+    public static func verifyApiKey(_ apiKey: String, storedHash: String, pepper: String) -> Bool {
+        let parts = storedHash.split(separator: "$", omittingEmptySubsequences: false)
+        guard
+            parts.count == 4,
+            parts[0] == Self.apiKeyHashScheme,
+            let iterations = Int(parts[1]),
+            iterations > 0,
+            let salt = Self.decodeHex(String(parts[2])),
+            let expected = Self.decodeHex(String(parts[3]))
+        else {
+            return false
+        }
+
+        let password = Data((pepper + ":" + apiKey).utf8)
+        let derived = pbkdf2SHA256(
+            password: password,
+            salt: Data(salt),
+            iterations: iterations,
+            keyLength: expected.count
+        )
+        return constantTimeEquals(derived, Data(expected))
+    }
+
+    @available(
+        *,
+        unavailable,
+        message: "Removed for security. Use hashApiKey(_:pepper:) with a secret pepper."
+    )
     public static func hashApiKey(_ apiKey: String) -> String {
-        let data = Data(apiKey.utf8)
-        let hash = SHA256.hash(data: data)
-        return hash.compactMap { String(format: "%02x", $0) }.joined()
+        fatalError("Unavailable")
+    }
+
+    private static func pbkdf2SHA256(
+        password: Data,
+        salt: Data,
+        iterations: Int,
+        keyLength: Int
+    ) -> Data {
+        let hLen = 32 // SHA-256 output length in bytes
+        let blockCount = Int(ceil(Double(keyLength) / Double(hLen)))
+        let key = SymmetricKey(data: password)
+
+        var derived = Data()
+        derived.reserveCapacity(blockCount * hLen)
+
+        for blockIndex in 1...blockCount {
+            var blockData = Data()
+            blockData.append(salt)
+
+            var beIndex = UInt32(blockIndex).bigEndian
+            withUnsafeBytes(of: &beIndex) { rawBuffer in
+                blockData.append(contentsOf: rawBuffer)
+            }
+
+            var u = Data(HMAC<SHA256>.authenticationCode(for: blockData, using: key))
+            var t = u
+
+            if iterations > 1 {
+                for _ in 2...iterations {
+                    u = Data(HMAC<SHA256>.authenticationCode(for: u, using: key))
+                    t = xor(t, u)
+                }
+            }
+
+            derived.append(t)
+        }
+
+        return Data(derived.prefix(keyLength))
+    }
+
+    private static func xor(_ lhs: Data, _ rhs: Data) -> Data {
+        let lhsBytes = [UInt8](lhs)
+        let rhsBytes = [UInt8](rhs)
+        guard lhsBytes.count == rhsBytes.count else { return Data() }
+
+        let combined = zip(lhsBytes, rhsBytes).map { $0 ^ $1 }
+        return Data(combined)
+    }
+
+    private static func randomBytes(count: Int) -> [UInt8] {
+        var generator = SystemRandomNumberGenerator()
+        return (0..<count).map { _ in UInt8.random(in: .min ... .max, using: &generator) }
+    }
+
+    private static func encodeHex(_ data: Data) -> String {
+        data.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func constantTimeEquals(_ lhs: Data, _ rhs: Data) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        return zip(lhs, rhs).reduce(UInt8(0)) { $0 | ($1.0 ^ $1.1) } == 0
+    }
+
+    private static func decodeHex(_ hex: String) -> [UInt8]? {
+        guard hex.count.isMultiple(of: 2) else { return nil }
+
+        var bytes: [UInt8] = []
+        bytes.reserveCapacity(hex.count / 2)
+
+        var currentIndex = hex.startIndex
+        while currentIndex < hex.endIndex {
+            let nextIndex = hex.index(currentIndex, offsetBy: 2)
+            let byteString = hex[currentIndex..<nextIndex]
+            guard let byte = UInt8(byteString, radix: 16) else {
+                return nil
+            }
+            bytes.append(byte)
+            currentIndex = nextIndex
+        }
+
+        return bytes
     }
 }
 

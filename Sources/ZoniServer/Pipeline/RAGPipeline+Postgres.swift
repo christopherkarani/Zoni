@@ -21,7 +21,7 @@ extension RAGPipeline {
     /// - **Production deployments**: Scalable, durable storage
     /// - **Large datasets**: Efficient vector indexing (IVFFlat/HNSW)
     /// - **Multi-instance apps**: Shared database across instances
-    /// - **Server-side Swift**: Vapor, Hummingbird applications
+    /// - **Server-side Swift**: Server applications
     ///
     /// ## Prerequisites
     ///
