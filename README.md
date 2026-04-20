@@ -49,6 +49,9 @@ Zoni provides multiple products for different use cases:
 
 ### Server-Side RAG (Linux/macOS)
 
+
+
+
 Build a simple RAG pipeline for server-side applications:
 
 ```swift
