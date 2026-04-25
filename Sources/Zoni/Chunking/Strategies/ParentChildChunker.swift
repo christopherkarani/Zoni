@@ -329,7 +329,6 @@ public struct ParentChildChunker: ChunkingStrategy, Sendable {
         let text = parent.content
         var children: [Chunk] = []
         var position = 0
-        var positionInParent = 0
 
         while position < text.count {
             let endPosition = min(position + childSize, text.count)
@@ -350,13 +349,12 @@ public struct ParentChildChunker: ChunkingStrategy, Sendable {
                         "isChild": .bool(true),
                         "parentId": .string(parent.id),
                         "parentIndex": .int(parentIndex),
-                        "positionInParent": .int(positionInParent)
+                        "positionInParent": .int(position)
                     ]
                 )
             )
 
             children.append(child)
-            positionInParent += 1
 
             // Calculate next position with overlap
             let stride = childSize - childOverlap

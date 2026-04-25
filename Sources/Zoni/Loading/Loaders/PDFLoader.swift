@@ -28,7 +28,7 @@ import PDFKit
 /// let document = try await loader.load(from: pdfURL)
 ///
 /// // Load specific page range
-/// let rangeLoader = PDFLoader(pageRange: 0...4)
+/// let rangeLoader = PDFLoader(pageRange: 1...5)
 /// let firstFivePages = try await rangeLoader.load(from: pdfURL)
 ///
 /// // Load each page as separate document
@@ -49,8 +49,8 @@ public struct PDFLoader: DocumentLoader, Sendable {
 
     /// The page range to extract.
     ///
-    /// When `nil`, all pages are extracted. Page indices are zero-based.
-    /// For example, `0...2` extracts the first three pages.
+    /// When `nil`, all pages are extracted. Page numbers are one-based.
+    /// For example, `1...3` extracts the first three pages.
     public var pageRange: ClosedRange<Int>?
 
     /// Whether to preserve layout formatting in the extracted text.
@@ -62,7 +62,7 @@ public struct PDFLoader: DocumentLoader, Sendable {
     /// Creates a new PDF loader with the specified options.
     ///
     /// - Parameters:
-    ///   - pageRange: The range of pages to extract (zero-based). Pass `nil` to extract all pages.
+    ///   - pageRange: The one-based range of pages to extract. Pass `nil` to extract all pages.
     ///   - preserveLayout: Whether to preserve layout formatting. Defaults to `false`.
     public init(pageRange: ClosedRange<Int>? = nil, preserveLayout: Bool = false) {
         self.pageRange = pageRange
@@ -115,8 +115,8 @@ public struct PDFLoader: DocumentLoader, Sendable {
         let pageCount = pdfDocument.pageCount
         var textParts: [String] = []
 
-        let startPage = pageRange?.lowerBound ?? 0
-        let endPage = min(pageRange?.upperBound ?? (pageCount - 1), pageCount - 1)
+        let startPage = pageRange.map { max($0.lowerBound - 1, 0) } ?? 0
+        let endPage = min(pageRange.map { max($0.upperBound - 1, 0) } ?? (pageCount - 1), pageCount - 1)
 
         // Ensure valid range
         guard startPage <= endPage && startPage < pageCount else {
@@ -125,9 +125,11 @@ public struct PDFLoader: DocumentLoader, Sendable {
         }
 
         for pageIndex in startPage...endPage {
-            if let page = pdfDocument.page(at: pageIndex),
-               let pageText = page.string {
-                textParts.append(pageText)
+            if let page = pdfDocument.page(at: pageIndex) {
+                let pageText = extractText(from: page)
+                if !pageText.isEmpty {
+                    textParts.append(pageText)
+                }
             }
         }
 
@@ -178,8 +180,8 @@ public struct PDFLoader: DocumentLoader, Sendable {
         var documents: [Document] = []
         let pageCount = pdfDocument.pageCount
 
-        let startPage = pageRange?.lowerBound ?? 0
-        let endPage = min(pageRange?.upperBound ?? (pageCount - 1), pageCount - 1)
+        let startPage = pageRange.map { max($0.lowerBound - 1, 0) } ?? 0
+        let endPage = min(pageRange.map { max($0.upperBound - 1, 0) } ?? (pageCount - 1), pageCount - 1)
 
         // Ensure valid range
         guard startPage <= endPage && startPage < pageCount else {
@@ -197,12 +199,26 @@ public struct PDFLoader: DocumentLoader, Sendable {
                 pageMetadata.custom["pageNumber"] = .int(pageIndex + 1)
                 pageMetadata.custom["totalPages"] = .int(pageCount)
 
-                let content = page.string ?? ""
+                let content = extractText(from: page)
                 documents.append(Document(content: content, metadata: pageMetadata))
             }
         }
 
         return documents
+    }
+
+    private func extractText(from page: PDFPage) -> String {
+        var parts: [String] = []
+        if let pageText = page.string?.trimmingCharacters(in: .whitespacesAndNewlines), !pageText.isEmpty {
+            parts.append(pageText)
+        }
+
+        let annotationText = page.annotations.compactMap {
+            $0.contents?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }.filter { !$0.isEmpty }
+        parts.append(contentsOf: annotationText)
+
+        return parts.joined(separator: "\n")
     }
 
     #else

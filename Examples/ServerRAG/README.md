@@ -7,8 +7,6 @@ A complete Vapor-based RAG server example using Zoni.
 This example demonstrates how to build a production-ready RAG (Retrieval-Augmented Generation) server using:
 
 - **Zoni** - Core RAG framework
-- **ZoniServer** - Server-side extensions with multi-tenancy support
-- **ZoniVapor** - Vapor framework integration
 - **Vapor** - Swift web framework
 
 The example uses mock providers (no API keys required) for easy local testing. In production, replace them with real providers.
@@ -224,17 +222,11 @@ let vectorStore = PineconeStore(
 
 ### Adding Authentication
 
-The ZoniVapor configuration already includes tenant management. For production:
+For production, add Vapor middleware around the routes that should require authentication:
 
 ```swift
-// Use a real tenant storage backend
-let tenantManager = TenantManager(
-    storage: PostgresTenantStorage(database: db),
-    jwtSecret: Environment.get("JWT_SECRET")
-)
-
-// Apply middleware to protected routes
-app.grouped(TenantMiddleware()) { protected in
+let protected = app.grouped(MyAuthenticationMiddleware())
+protected.grouped("api") { protected in
     protected.post("query", use: executeQuery)
     protected.post("ingest", use: ingestDocuments)
 }
@@ -248,7 +240,7 @@ Examples/ServerRAG/
 ├── README.md              # This file
 └── Sources/
     └── App/
-        ├── main.swift     # Application entry point
+        ├── ServerRAGApp.swift # Application entry point
         ├── configure.swift # Zoni and Vapor configuration
         └── routes.swift    # HTTP endpoint definitions
 ```

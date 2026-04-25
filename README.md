@@ -2,11 +2,11 @@
 
 **A Retrieval-Augmented Generation framework for Swift**
 
-[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
+[![Swift 6.1](https://img.shields.io/badge/Swift-6.1-orange.svg)](https://swift.org)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%2014%2B%20%7C%20iOS%2017%2B-blue.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Zoni is a comprehensive, production-ready RAG framework built with Swift 6.0. It provides everything you need to build intelligent document search, question-answering systems, and AI-powered applications across Linux, macOS, and iOS.
+Zoni is a comprehensive RAG framework built with Swift 6.1. It provides document search, question-answering, and AI application building blocks across Linux, macOS, and iOS.
 
 ## Features
 
@@ -41,6 +41,30 @@ Zoni provides multiple products for different use cases:
 | **ZoniServer** | Multi-tenancy, job queue system, and server-side abstractions | Linux, macOS |
 | **ZoniApple** | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) | macOS 14+, iOS 17+ |
 | **ZoniAgents** | SwiftAgents integration layer for agentic workflows | Linux, macOS, iOS |
+| **ZoniConduit** | Optional Conduit inference integration layer | Linux, macOS |
+
+## Build and Test
+
+Use these commands as the local baseline before opening a PR:
+
+```bash
+# Build the package
+swift build
+
+# Run the core test suite without external services
+swift test --filter ZoniTests
+
+# Run integration tests that require local or hosted vector stores
+ZONI_RUN_INTEGRATION_TESTS=1 swift test --filter IntegrationTests
+```
+
+The example projects are standalone Swift packages:
+
+```bash
+(cd Examples/AgentWithRAG && swift build)
+(cd Examples/ServerRAG && swift build)
+(cd Examples/iOSDocumentQA && swift build)
+```
 
 ## Quick Start
 
@@ -138,8 +162,7 @@ for try await event in pipeline.streamQuery("Summarize the key points") {
 - [Getting Started Guide](Documentation/GettingStarted.md) - Detailed setup and basic usage
 - [Server Guide](Documentation/ServerGuide.md) - Building RAG APIs with ZoniServer
 - [Apple Platforms Guide](Documentation/AppleGuide.md) - On-device ML and iOS/macOS integration
-- [Advanced Retrieval](Documentation/AdvancedRetrieval.md) - Hybrid search, reranking, MMR
-- [API Reference](Documentation/API/) - Complete API documentation
+- Advanced retrieval examples are covered in the sections below.
 
 ## Architecture
 
@@ -266,7 +289,7 @@ let reranker = RerankerRetriever(
 
 ## Requirements
 
-- **Swift 6.0+** (Swift 6 language mode enabled)
+- **Swift 6.1+** (Swift 6 language mode enabled)
 - **Platforms:**
   - Linux (Ubuntu 20.04+)
   - macOS 14.0+
@@ -293,13 +316,15 @@ Check out the [Examples](Examples/) directory for complete sample projects:
 Zoni includes comprehensive test coverage:
 
 ```bash
-# Run all tests
-swift test
-
-# Run specific test suite
+# Run core tests that do not require external services
 swift test --filter ZoniTests
+
+# Run specific product suites
 swift test --filter ZoniServerTests
 swift test --filter ZoniAppleTests
+
+# Run integration tests that require Qdrant/Pinecone configuration
+ZONI_RUN_INTEGRATION_TESTS=1 swift test --filter IntegrationTests
 
 # Run with coverage (macOS/Linux)
 swift test --enable-code-coverage
@@ -324,7 +349,7 @@ Zoni is released under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-Built with Swift 6.0 and powered by:
+Built with Swift 6.1 and powered by:
 - [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing
 - [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking
 - [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface

@@ -49,9 +49,6 @@ public actor WebLoader {
     /// The HTML loader used for parsing fetched content.
     private let htmlLoader: HTMLLoader
 
-    /// Whether this actor owns the HTTP client and should shut it down.
-    private let ownsClient: Bool
-
     /// User agent string for HTTP requests.
     public let userAgent: String
 
@@ -64,7 +61,7 @@ public actor WebLoader {
     /// Creates a new web loader with the specified configuration.
     ///
     /// - Parameters:
-    ///   - httpClient: An existing HTTP client to use. If `nil`, creates a new one.
+    ///   - httpClient: An existing HTTP client to use. If `nil`, uses `HTTPClient.shared`.
     ///   - userAgent: The user agent string for HTTP requests. Defaults to `"Zoni/1.0"`.
     ///   - timeout: The request timeout duration. Defaults to 30 seconds.
     ///   - followRedirects: Whether to follow HTTP redirects. Defaults to `true`.
@@ -74,13 +71,7 @@ public actor WebLoader {
         timeout: Duration = .seconds(30),
         followRedirects: Bool = true
     ) {
-        if let client = httpClient {
-            self.httpClient = client
-            self.ownsClient = false
-        } else {
-            self.httpClient = HTTPClient(eventLoopGroupProvider: .singleton)
-            self.ownsClient = true
-        }
+        self.httpClient = httpClient ?? HTTPClient.shared
         self.userAgent = userAgent
         self.timeout = timeout
         self.followRedirects = followRedirects
@@ -219,15 +210,12 @@ public actor WebLoader {
         return scheme == "http" || scheme == "https"
     }
 
-    /// Shuts down the HTTP client.
+    /// Shuts down an externally managed HTTP client.
     ///
-    /// Call this method when you're done using the web loader to release resources.
-    /// Only shuts down the client if it was created by this loader (not passed in).
+    /// `WebLoader` uses `HTTPClient.shared` by default, so there is no per-loader
+    /// resource to release. If you pass a custom client, keep ownership with the
+    /// caller and shut it down from the same scope that created it.
     ///
-    /// - Throws: Any errors from the HTTP client shutdown.
     public func shutdown() async throws {
-        if ownsClient {
-            try await httpClient.shutdown()
-        }
     }
 }

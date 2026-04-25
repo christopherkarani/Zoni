@@ -1,6 +1,6 @@
 // ServerRAG - Vapor-based RAG Server Example
 //
-// main.swift - Application entry point.
+// ServerRAGApp.swift - Application entry point.
 //
 // This example demonstrates how to build a RAG server using Zoni with Vapor.
 // It uses mock providers so it can run without external API keys.

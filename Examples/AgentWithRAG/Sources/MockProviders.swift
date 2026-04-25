@@ -4,6 +4,8 @@
 
 import Zoni
 import ZoniAgents
+import Darwin
+import Foundation
 
 // MARK: - MockEmbeddingProvider
 

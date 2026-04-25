@@ -13,8 +13,6 @@ let package = Package(
             name: "App",
             dependencies: [
                 .product(name: "Zoni", package: "zoni"),
-                .product(name: "ZoniServer", package: "zoni"),
-                .product(name: "ZoniVapor", package: "zoni"),
                 .product(name: "Vapor", package: "vapor"),
             ],
             path: "Sources/App"

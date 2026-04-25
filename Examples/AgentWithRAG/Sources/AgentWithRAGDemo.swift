@@ -1,6 +1,6 @@
 // AgentWithRAG Example
 //
-// main.swift - Entry point demonstrating agent + RAG integration.
+// AgentWithRAGDemo.swift - Entry point demonstrating agent + RAG integration.
 //
 // This example shows how to:
 // 1. Create a RAGPipeline with mock providers (no API keys needed)
@@ -11,80 +11,78 @@
 import Zoni
 import ZoniAgents
 
-// MARK: - Sample Documents
-
-/// Sample documents about Swift programming for the demo.
-let sampleDocuments = [
-    Document(
-        content: """
-        Swift is a powerful and intuitive programming language developed by Apple. \
-        It was introduced in 2014 and has since become the primary language for iOS, \
-        macOS, watchOS, and tvOS development. Swift is designed to be safe, fast, and \
-        expressive, making it ideal for both beginners and experienced developers.
-        """,
-        metadata: DocumentMetadata(
-            source: "swift-overview",
-            title: "Swift Programming Language Overview"
-        )
-    ),
-    Document(
-        content: """
-        Swift Concurrency was introduced in Swift 5.5, bringing modern async/await \
-        syntax to the language. It includes features like async functions, await \
-        expressions, actors for safe concurrent state management, and structured \
-        concurrency with task groups. These features help developers write safe \
-        concurrent code without common pitfalls like data races.
-        """,
-        metadata: DocumentMetadata(
-            source: "swift-concurrency",
-            title: "Swift Concurrency Guide"
-        )
-    ),
-    Document(
-        content: """
-        Actors in Swift provide a way to isolate mutable state and prevent data races. \
-        An actor is a reference type that protects its internal state from concurrent \
-        access. When you access an actor's properties or methods from outside the actor, \
-        you must use await because the access might need to wait for exclusive access. \
-        The @MainActor attribute marks code that must run on the main thread.
-        """,
-        metadata: DocumentMetadata(
-            source: "swift-actors",
-            title: "Understanding Swift Actors"
-        )
-    ),
-    Document(
-        content: """
-        The Sendable protocol in Swift marks types as safe to share across concurrency \
-        domains. Value types like structs and enums are often implicitly Sendable. \
-        Reference types must explicitly conform to Sendable and ensure their mutable \
-        state is protected. Closures can be marked @Sendable to indicate they are safe \
-        to pass across actor boundaries.
-        """,
-        metadata: DocumentMetadata(
-            source: "swift-sendable",
-            title: "Swift Sendable Protocol"
-        )
-    ),
-    Document(
-        content: """
-        SwiftUI is a declarative framework for building user interfaces across Apple \
-        platforms. It uses a state-driven approach where the UI automatically updates \
-        when the underlying data changes. Key concepts include Views, State, Binding, \
-        and environment values. SwiftUI works seamlessly with Swift Concurrency for \
-        handling async operations in the UI layer.
-        """,
-        metadata: DocumentMetadata(
-            source: "swiftui-intro",
-            title: "Introduction to SwiftUI"
-        )
-    )
-]
-
 // MARK: - Main Entry Point
 
 @main
 struct AgentWithRAGDemo {
+    /// Sample documents about Swift programming for the demo.
+    static let sampleDocuments = [
+        Document(
+            content: """
+            Swift is a powerful and intuitive programming language developed by Apple. \
+            It was introduced in 2014 and has since become the primary language for iOS, \
+            macOS, watchOS, and tvOS development. Swift is designed to be safe, fast, and \
+            expressive, making it ideal for both beginners and experienced developers.
+            """,
+            metadata: DocumentMetadata(
+                source: "swift-overview",
+                title: "Swift Programming Language Overview"
+            )
+        ),
+        Document(
+            content: """
+            Swift Concurrency was introduced in Swift 5.5, bringing modern async/await \
+            syntax to the language. It includes features like async functions, await \
+            expressions, actors for safe concurrent state management, and structured \
+            concurrency with task groups. These features help developers write safe \
+            concurrent code without common pitfalls like data races.
+            """,
+            metadata: DocumentMetadata(
+                source: "swift-concurrency",
+                title: "Swift Concurrency Guide"
+            )
+        ),
+        Document(
+            content: """
+            Actors in Swift provide a way to isolate mutable state and prevent data races. \
+            An actor is a reference type that protects its internal state from concurrent \
+            access. When you access an actor's properties or methods from outside the actor, \
+            you must use await because the access might need to wait for exclusive access. \
+            The @MainActor attribute marks code that must run on the main thread.
+            """,
+            metadata: DocumentMetadata(
+                source: "swift-actors",
+                title: "Understanding Swift Actors"
+            )
+        ),
+        Document(
+            content: """
+            The Sendable protocol in Swift marks types as safe to share across concurrency \
+            domains. Value types like structs and enums are often implicitly Sendable. \
+            Reference types must explicitly conform to Sendable and ensure their mutable \
+            state is protected. Closures can be marked @Sendable to indicate they are safe \
+            to pass across actor boundaries.
+            """,
+            metadata: DocumentMetadata(
+                source: "swift-sendable",
+                title: "Swift Sendable Protocol"
+            )
+        ),
+        Document(
+            content: """
+            SwiftUI is a declarative framework for building user interfaces across Apple \
+            platforms. It uses a state-driven approach where the UI automatically updates \
+            when the underlying data changes. Key concepts include Views, State, Binding, \
+            and environment values. SwiftUI works seamlessly with Swift Concurrency for \
+            handling async operations in the UI layer.
+            """,
+            metadata: DocumentMetadata(
+                source: "swiftui-intro",
+                title: "Introduction to SwiftUI"
+            )
+        )
+    ]
+
     static func main() async {
         print("=== Agent with RAG Example ===\n")
 

@@ -39,10 +39,6 @@ let package = Package(
             targets: ["ZoniConduit"]
         ),
     ],
-    traits: [
-        "vapor",
-        "hummingbird"
-    ],
     dependencies: [
         // Core dependencies
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
@@ -59,15 +55,6 @@ let package = Package(
 
         // Phase 5A: Logging for production deployments
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
-
-        // Phase 5A: Vapor integration
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.90.0"),
-        .package(url: "https://github.com/vapor/jwt.git", from: "4.0.0"),
-
-        // Phase 5A: Hummingbird integration
-        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
-        .package(url: "https://github.com/hummingbird-project/hummingbird-websocket.git", from: "2.0.0"),
-        .package(url: "https://github.com/hummingbird-project/hummingbird-auth.git", from: "2.0.0"),
 
         // Phase 5B: Apple Platform Extensions
         .package(url: "https://github.com/ml-explore/mlx-swift.git", from: "0.18.0"),
@@ -108,19 +95,8 @@ let package = Package(
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "Logging", package: "swift-log"),
-                // Vapor dependencies
-                .product(name: "Vapor", package: "vapor", condition: .when(traits: ["vapor"])),
-                .product(name: "JWT", package: "jwt", condition: .when(traits: ["vapor"])),
-                // Hummingbird dependencies
-                .product(name: "Hummingbird", package: "hummingbird", condition: .when(traits: ["hummingbird"])),
-                .product(name: "HummingbirdWebSocket", package: "hummingbird-websocket", condition: .when(traits: ["hummingbird"])),
-                .product(name: "HummingbirdAuth", package: "hummingbird-auth", condition: .when(traits: ["hummingbird"])),
             ],
-            path: "Sources/ZoniServer",
-            swiftSettings: [
-                .define("VAPOR", .when(traits: ["vapor"])),
-                .define("HUMMINGBIRD", .when(traits: ["hummingbird"]))
-            ]
+            path: "Sources/ZoniServer"
         ),
 
         // Apple platform extensions (Phase 5B)

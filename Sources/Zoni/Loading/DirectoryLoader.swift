@@ -263,8 +263,8 @@ public actor DirectoryLoader {
                     return true
                 }
             } else {
-                // Exact match on filename or directory name
-                if filename == pattern || pathComponents.contains(pattern) {
+                // Match directory names exactly, and filenames by substring for simple filters.
+                if filename.contains(pattern) || pathComponents.contains(pattern) {
                     return true
                 }
             }

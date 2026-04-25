@@ -29,6 +29,8 @@ import Foundation
 
 // MARK: - Test Configuration
 
+private let integrationTestsEnabled = ProcessInfo.processInfo.environment["ZONI_RUN_INTEGRATION_TESTS"] == "1"
+
 /// Helper to check if integration tests should run for a given service
 private func shouldRunIntegrationTests(for service: String) -> Bool {
     switch service {
@@ -80,7 +82,11 @@ private func makeEmbedding(dimensions: Int = 1536, seed: Int = 0) -> Embedding {
 
 // MARK: - Qdrant Integration Tests
 
-@Suite("Qdrant Integration Tests", .tags(.integration))
+@Suite(
+    "Qdrant Integration Tests",
+    .tags(.integration),
+    .enabled(if: integrationTestsEnabled, "Set ZONI_RUN_INTEGRATION_TESTS=1 to run integration tests")
+)
 struct QdrantIntegrationTests {
 
     @Test("Qdrant: Add, search, and delete chunks")
@@ -175,7 +181,11 @@ struct QdrantIntegrationTests {
 
 // MARK: - Pinecone Integration Tests
 
-@Suite("Pinecone Integration Tests", .tags(.integration))
+@Suite(
+    "Pinecone Integration Tests",
+    .tags(.integration),
+    .enabled(if: integrationTestsEnabled, "Set ZONI_RUN_INTEGRATION_TESTS=1 to run integration tests")
+)
 struct PineconeIntegrationTests {
 
     @Test("Pinecone: Add, search, and delete chunks")

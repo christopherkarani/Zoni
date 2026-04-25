@@ -480,7 +480,7 @@ do {
 
 ## Next Steps
 
-- **[Server Deployment Guide](ServerGuide.md)** - Deploy Zoni as a server with Vapor or Hummingbird
+- **[Server Deployment Guide](ServerGuide.md)** - Deploy Zoni with your server framework
 - **[Apple Platforms Guide](AppleGuide.md)** - Use Zoni in iOS, macOS, and visionOS apps
 - **[Advanced Topics](Advanced.md)** - Custom retrievers, query engines, and synthesis strategies
 
