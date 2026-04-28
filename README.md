@@ -13,7 +13,7 @@ Zoni is a comprehensive RAG framework built with Swift 6.1. It provides document
 - **Document Loading** - PDF, Markdown, HTML, JSON, CSV, plain text, and web pages
 - **Smart Chunking** - Recursive, semantic, markdown-aware, code-aware, sentence, and paragraph strategies
 - **Multiple Embeddings** - OpenAI, Cohere, Voyage, Ollama, Apple NLEmbedding, MLX, Foundation Models
-- **Vector Stores** - PostgreSQL+pgvector, SQLite, Qdrant, Pinecone, and in-memory storage
+- **Vector Stores** - In-memory, Qdrant, Pinecone, plus optional PostgreSQL+pgvector and SQLite integrations
 - **Advanced Retrieval** - Hybrid search, multi-query expansion, MMR diversity, reranking
 - **Query Engine** - Multiple response synthesis strategies (compact, refine, tree-summarize)
 - **Agent Tools** - SwiftAgents-compatible tools for RAG operations
@@ -51,6 +51,8 @@ Heavier storage and framework integrations live outside the root package so core
 | Integration | Path | Adds |
 |-------------|------|------|
 | **ZoniServerPostgres** | `Integrations/ZoniServerPostgres` | PostgreSQL/pgvector vector store and RAG pipeline factory |
+| **ZoniSQLite** | `Integrations/ZoniSQLite` | SQLite vector store for embedded persistence |
+| **ZoniSQLiteApple** | `Integrations/ZoniSQLite` | Apple SQLite memory strategies and on-device pipeline factories |
 
 ## Build and Test
 
@@ -129,10 +131,11 @@ Build privacy-first, on-device RAG using Apple's frameworks:
 ```swift
 import Zoni
 import ZoniApple
+import ZoniSQLite
 
 // Create on-device pipeline with Apple NaturalLanguage
 let embedding = NLEmbeddingProvider(language: .english)
-let vectorStore = SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
+let vectorStore = try SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
 let chunker = MarkdownChunker(targetChunkSize: 512)
 
 // For iOS 26+ / macOS 26+ with Apple Intelligence:
@@ -190,7 +193,7 @@ Zoni follows a modular architecture with clear protocol boundaries:
             │             │             │
     ┌───────▼─────────────▼─────────────▼─────────┐
     │            VectorStore                       │
-    │    (PostgreSQL, SQLite, Qdrant, etc.)       │
+    │ (In-memory, Qdrant, optional integrations)  │
     └───────┬──────────────────────────────────────┘
             │
     ┌───────▼──────┐
@@ -252,8 +255,8 @@ Flexible storage backends:
 // In-memory (development/testing)
 let memory = InMemoryVectorStore()
 
-// SQLite (single-node, embedded)
-let sqlite = SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
+// SQLite (single-node, embedded; requires import ZoniSQLite)
+let sqlite = try SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
 
 // PostgreSQL with pgvector (production, multi-tenant; requires import ZoniServerPostgres)
 let postgres = try await PgVectorStore(
@@ -361,7 +364,7 @@ Zoni is released under the MIT License. See [LICENSE](LICENSE) for details.
 Built with Swift 6.1 and powered by:
 - [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing
 - [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking
-- [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface
+- [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface for the optional `ZoniSQLite` package
 - [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML
 - [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec
 

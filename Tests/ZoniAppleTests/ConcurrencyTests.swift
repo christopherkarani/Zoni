@@ -6,9 +6,13 @@ import Testing
 import Foundation
 @testable import ZoniApple
 @testable import Zoni
+#if canImport(ZoniSQLite)
+@testable import ZoniSQLite
+#endif
 
 // MARK: - EmbeddingLRUCache Concurrency Tests
 
+#if canImport(ZoniSQLite)
 @Suite("EmbeddingLRUCache Concurrency Tests")
 struct EmbeddingLRUCacheConcurrencyTests {
 
@@ -228,6 +232,7 @@ struct MemoryStrategyConcurrencyTests {
         }
     }
 }
+#endif
 
 // MARK: - Embedding Provider Concurrency Tests
 
@@ -298,6 +303,7 @@ struct EmbeddingProviderConcurrencyTests {
 
 // MARK: - SQLiteVectorStore Concurrency Tests
 
+#if canImport(ZoniSQLite)
 @Suite("SQLiteVectorStore Concurrency Tests")
 struct SQLiteVectorStoreConcurrencyTests {
 
@@ -379,3 +385,4 @@ struct SQLiteVectorStoreConcurrencyTests {
         }
     }
 }
+#endif

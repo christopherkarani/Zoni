@@ -50,8 +50,6 @@ let package = Package(
         .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.20.0"),
         .package(url: "https://github.com/christopherkarani/Conduit.git", from: "1.0.1"),
 
-        // Phase 3: Vector Store dependencies
-        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.14.0"),
         // Phase 5A: Cryptography for JWT validation
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
 
@@ -76,7 +74,6 @@ let package = Package(
                 "ZoniCore",
                 .product(name: "SwiftSoup", package: "SwiftSoup"),
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
-                .product(name: "SQLite", package: "SQLite.swift"),
             ],
             path: "Sources/Zoni"
         ),

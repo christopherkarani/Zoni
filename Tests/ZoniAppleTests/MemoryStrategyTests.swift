@@ -15,6 +15,11 @@ import Testing
 import Foundation
 @testable import ZoniApple
 @testable import Zoni
+#if canImport(ZoniSQLite)
+@testable import ZoniSQLite
+#endif
+
+#if canImport(ZoniSQLite)
 
 // MARK: - Test Helpers
 
@@ -953,3 +958,4 @@ struct MemoryStrategyEdgeCaseTests {
         }
     }
 }
+#endif

@@ -4,6 +4,8 @@
 
 import Foundation
 import Zoni
+import ZoniApple
+import ZoniSQLite
 import NaturalLanguage
 
 // MARK: - Apple Platform Factory Methods

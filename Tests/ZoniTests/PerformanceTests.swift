@@ -8,6 +8,9 @@
 import Testing
 import Foundation
 @testable import Zoni
+#if canImport(ZoniSQLite)
+@testable import ZoniSQLite
+#endif
 
 // MARK: - Test Helpers
 
@@ -192,6 +195,7 @@ struct InMemoryVectorStorePerformanceTests {
 
 // MARK: - SQLiteVectorStore Performance Tests
 
+#if canImport(ZoniSQLite)
 @Suite("SQLiteVectorStore Performance Tests", .tags(.performance))
 struct SQLiteVectorStorePerformanceTests {
 
@@ -275,6 +279,7 @@ struct SQLiteVectorStorePerformanceTests {
         try? FileManager.default.removeItem(atPath: tempPath)
     }
 }
+#endif
 
 // MARK: - VectorMath Performance Tests
 

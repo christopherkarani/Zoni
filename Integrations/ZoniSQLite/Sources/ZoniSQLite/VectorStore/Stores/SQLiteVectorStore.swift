@@ -4,6 +4,7 @@
 
 import Foundation
 import SQLite
+import Zoni
 import ZoniCore
 
 // MARK: - SQLiteVectorStore

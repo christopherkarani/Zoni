@@ -41,6 +41,7 @@ Date: 2026-04-25
 - Updated README and ServerRAG docs with current products, commands, and integration-test guidance.
 - Verification:
   - `swift build` passed.
+  - `swift build --target ZoniApple` passed.
   - `swift test --filter ZoniTests` passed with 945 tests in 112 suites.
   - `(cd Examples/AgentWithRAG && swift build)` passed.
   - `(cd Examples/ServerRAG && swift build)` passed.
@@ -174,3 +175,50 @@ Date: 2026-04-28
   - `swift test --filter ZoniTests` passed with 945 tests in 112 suites.
   - `swift test --filter ZoniServerTests` passed with 9 XCTest cases plus 184 Swift Testing tests.
   - `(cd Integrations/ZoniServerPostgres && swift build)` passed.
+
+# SQLite Integration Package Split
+
+Date: 2026-04-28
+
+## Assumptions
+
+- SQLite is valuable, but it is a persistence adapter rather than required core RAG behavior.
+- Moving SQLite out of the root package should remove `SQLite.swift` from default root dependency resolution.
+- Apple SQLite memory strategies and Apple SQLite pipeline factories should travel with the SQLite integration instead of keeping root `ZoniApple` coupled to `SQLiteVectorStore`.
+
+## Plan
+
+- [x] Move `SQLiteVectorStore` into an optional `Integrations/ZoniSQLite` package.
+  - Verify: root `Zoni` no longer imports `SQLite`.
+- [x] Move Apple-specific SQLite helpers/factories into the same integration package.
+  - Verify: root `ZoniApple` builds without `SQLiteVectorStore`.
+- [x] Remove SQLite cases/convenience APIs from root `VectorStoreFactory` and document the optional package.
+  - Verify: root manifest no longer declares `SQLite.swift`; docs point SQLite users to `ZoniSQLite`.
+- [x] Gate or relocate root tests that require SQLite.
+  - Verify: root `ZoniTests` and `ZoniAppleTests` build without SQLite.
+- [x] Run root and integration verification.
+  - Verify: `swift build`, filtered tests, dependency tree check, and integration build pass.
+
+## Research Notes
+
+- `SQLiteVectorStore` only depends on root RAG protocols/types, `Foundation`, and `SQLite.swift`, so it can move into a local integration package without pulling server or Apple code into root.
+- Apple memory strategies and Apple SQLite pipeline factory helpers are coupled to `SQLiteVectorStore`, so keeping them in root `ZoniApple` would preserve a hidden SQLite dependency. They now live in `ZoniSQLiteApple`.
+- Removing SQLite from root also means root `VectorStoreFactory` cannot keep a `.sqlite` config case or `createSQLite` convenience APIs without reintroducing the dependency.
+- Root `ZoniTests` passed after gating SQLite-specific performance tests behind `canImport(ZoniSQLite)`.
+- Root `ZoniAppleTests` builds, but the full Apple suite is environment-sensitive: several provider tests require local Apple/ML model availability and first-run model downloads. This was pre-existing noise and not caused by the SQLite package boundary.
+
+## Review
+
+- Added `Integrations/ZoniSQLite` with `ZoniSQLite` and `ZoniSQLiteApple` library products.
+- Removed the root `SQLite.swift` dependency and moved the SQLite vector store plus Apple SQLite helpers into the optional integration package.
+- Removed SQLite-specific creation APIs from root `VectorStoreFactory` so the default package no longer exposes APIs that require an absent adapter.
+- Updated README, getting started docs, Apple docs, and ServerRAG notes to present SQLite as an optional integration.
+- Added integration-local `ZoniSQLiteTests` so the adapter keeps its own behavior checks after leaving the root package.
+- Verification so far:
+  - `swift build` passed.
+  - `(cd Integrations/ZoniSQLite && swift build)` passed.
+  - `(cd Integrations/ZoniSQLite && swift test --filter ZoniSQLiteTests)` passed with 2 tests in 1 suite.
+  - `swift package show-dependencies --format text | rg 'SQLite|sqlite'` found no SQLite dependency in the root package graph.
+  - `swift package describe --type json | rg 'SQLite|sqlite'` found no SQLite package/target declarations in the root manifest.
+  - `swift test --filter ZoniTests` passed with 942 tests in 111 suites.
+  - `swift test --filter ZoniAppleTests` builds but exits with existing provider/model environment failures, including Apple provider availability expectations and SwiftEmbeddings model download/cache errors.

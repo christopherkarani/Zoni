@@ -5,7 +5,7 @@
 // - Foundation Models for on-device LLM (iOS 26+)
 // - MLX Swift for GPU-accelerated embeddings on Apple Silicon
 // - swift-embeddings for ultra-fast Model2Vec embeddings
-// - Memory-optimized vector store strategies for large on-device datasets
+// - GPU-accelerated in-memory vector search for large on-device datasets
 
 @_exported import Zoni
 
@@ -31,11 +31,7 @@
 // Available on iOS 26.0+ and macOS 26.0+ when Apple Intelligence is enabled
 // 1024-dimensional embeddings using SystemLanguageModel
 
-// MARK: - Memory Strategies
+// MARK: - Optional SQLite Integration
 
-// MemoryStrategy protocol and implementations for SQLiteVectorStore
-// - EagerMemoryStrategy: Best for < 10k vectors (loads all into memory)
-// - StreamingMemoryStrategy: Best for > 100k vectors (batched streaming)
-// - CachedMemoryStrategy: LRU cache for frequent access patterns
-// - HybridMemoryStrategy: Best for 10k-100k vectors (cache + streaming)
-// - MemoryStrategyRecommendation: Auto-select based on store size
+// SQLite-backed Apple pipeline factories and memory strategies live in the
+// optional ZoniSQLiteApple integration package.

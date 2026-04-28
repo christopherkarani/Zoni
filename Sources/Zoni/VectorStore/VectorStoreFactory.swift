@@ -16,7 +16,6 @@ import ZoniCore
 /// ## Supported Backends
 ///
 /// - **In-Memory**: Fast, ephemeral storage for testing and prototyping
-/// - **SQLite**: Local persistence without external dependencies
 /// - **Qdrant**: Cloud-native vector database with advanced features
 /// - **Pinecone**: Managed vector database service
 ///
@@ -25,13 +24,6 @@ import ZoniCore
 /// ```swift
 /// // For testing - no persistence
 /// let testConfig: VectorStoreConfig = .inMemory
-///
-/// // For local development - SQLite persistence
-/// let localConfig: VectorStoreConfig = .sqlite(
-///     path: "/path/to/vectors.db",
-///     tableName: "my_vectors",
-///     dimensions: 1536
-/// )
 ///
 /// // For production - Qdrant Cloud
 /// let prodConfig: VectorStoreConfig = .qdrant(
@@ -59,23 +51,6 @@ public enum VectorStoreConfig: Sendable {
     /// Data is lost when the application terminates unless explicitly saved
     /// using `InMemoryVectorStore.save(to:)`.
     case inMemory
-
-    /// SQLite-based local vector store.
-    ///
-    /// Best for:
-    /// - Local persistence without external dependencies
-    /// - Medium-sized datasets (up to ~100k vectors)
-    /// - iOS/macOS apps requiring offline functionality
-    /// - Development environments
-    ///
-    /// - Parameters:
-    ///   - path: Path to the SQLite database file. Use `":memory:"` for an
-    ///     in-memory SQLite database (useful for testing with SQLite-specific features).
-    ///   - tableName: Name of the table to store vectors. Default: `"zoni_chunks"`.
-    ///     Use different table names to store multiple collections in one database.
-    ///   - dimensions: Expected embedding dimensions. Default: `1536` (OpenAI text-embedding-3-small).
-    ///     This is for documentation purposes and does not enforce constraints.
-    case sqlite(path: String, tableName: String = "zoni_chunks", dimensions: Int = 1536)
 
     /// Qdrant cloud vector store.
     ///
@@ -147,12 +122,6 @@ public enum VectorStoreConfig: Sendable {
 /// // Create an in-memory store for testing
 /// let testStore = try await VectorStoreFactory.create(from: .inMemory)
 ///
-/// // Create a SQLite store for local persistence
-/// let sqliteStore = try await VectorStoreFactory.create(from: .sqlite(
-///     path: "/path/to/vectors.db",
-///     dimensions: 1536
-/// ))
-///
 /// // Create a Qdrant store for production
 /// let qdrantStore = try await VectorStoreFactory.create(from: .qdrant(
 ///     url: URL(string: "https://your-cluster.qdrant.io")!,
@@ -179,9 +148,7 @@ public enum VectorStoreConfig: Sendable {
 ///     switch environment {
 ///     case .testing:
 ///         config = .inMemory
-///     case .development:
-///         config = .sqlite(path: "dev_vectors.db", dimensions: 1536)
-///     case .production:
+///     case .development, .production:
 ///         config = .qdrant(
 ///             url: URL(string: ProcessInfo.processInfo.environment["QDRANT_URL"]!)!,
 ///             collection: "documents",
@@ -238,21 +205,6 @@ public enum VectorStoreFactory {
         case .inMemory:
             return InMemoryVectorStore()
 
-        case .sqlite(let path, let tableName, let dimensions):
-            // Validate inputs before passing to constructor
-            guard !path.isEmpty else {
-                throw ZoniError.vectorStoreUnavailable(name: "sqlite: path cannot be empty")
-            }
-            guard dimensions > 0 else {
-                throw ZoniError.vectorStoreUnavailable(name: "sqlite: dimensions must be positive, got \(dimensions)")
-            }
-
-            do {
-                return try SQLiteVectorStore(path: path, tableName: tableName, dimensions: dimensions)
-            } catch {
-                throw ZoniError.vectorStoreUnavailable(name: "sqlite: failed to initialize - \(error.localizedDescription)")
-            }
-
         case .qdrant(let url, let collection, let apiKey):
             // Validate inputs
             guard !collection.isEmpty else {
@@ -298,65 +250,6 @@ public enum VectorStoreFactory {
     /// ```
     public static func createInMemory() -> InMemoryVectorStore {
         InMemoryVectorStore()
-    }
-
-    /// Creates a SQLite vector store with default settings.
-    ///
-    /// This is a convenience method for creating a SQLite store when you only need
-    /// to specify the database path. Uses default values for table name and dimensions.
-    ///
-    /// - Parameter path: Path to the SQLite database file. Use `":memory:"` for
-    ///   an in-memory database.
-    ///
-    /// - Returns: A `SQLiteVectorStore` instance.
-    ///
-    /// - Throws: `ZoniError.vectorStoreConnectionFailed` if the database cannot
-    ///   be opened or the schema cannot be created.
-    ///
-    /// ## Example
-    ///
-    /// ```swift
-    /// // Create with just a path
-    /// let store = try VectorStoreFactory.createSQLite(at: "/path/to/vectors.db")
-    ///
-    /// // Create in-memory SQLite for testing
-    /// let testStore = try VectorStoreFactory.createSQLite(at: ":memory:")
-    /// ```
-    public static func createSQLite(at path: String) throws -> SQLiteVectorStore {
-        try SQLiteVectorStore(path: path)
-    }
-
-    /// Creates a SQLite vector store with full configuration.
-    ///
-    /// Use this method when you need to specify all SQLite store parameters,
-    /// such as custom table names or specific embedding dimensions.
-    ///
-    /// - Parameters:
-    ///   - path: Path to the SQLite database file. Use `":memory:"` for an in-memory database.
-    ///   - tableName: Name of the table to store vectors.
-    ///   - dimensions: Expected embedding dimensions.
-    ///
-    /// - Returns: A `SQLiteVectorStore` instance.
-    ///
-    /// - Throws: `ZoniError.vectorStoreConnectionFailed` if the database cannot
-    ///   be opened or the schema cannot be created.
-    ///
-    /// ## Example
-    ///
-    /// ```swift
-    /// // Create with full configuration
-    /// let store = try VectorStoreFactory.createSQLite(
-    ///     at: "/path/to/app.db",
-    ///     tableName: "document_embeddings",
-    ///     dimensions: 768  // For sentence-transformers
-    /// )
-    /// ```
-    public static func createSQLite(
-        at path: String,
-        tableName: String,
-        dimensions: Int
-    ) throws -> SQLiteVectorStore {
-        try SQLiteVectorStore(path: path, tableName: tableName, dimensions: dimensions)
     }
 
     /// Creates a Qdrant vector store.
@@ -436,8 +329,6 @@ extension VectorStoreConfig: CustomStringConvertible {
         switch self {
         case .inMemory:
             return "InMemory"
-        case .sqlite(let path, let tableName, let dimensions):
-            return "SQLite(path: \"\(path)\", table: \"\(tableName)\", dimensions: \(dimensions))"
         case .qdrant(let url, let collection, let apiKey):
             let authStatus = apiKey != nil ? "authenticated" : "no auth"
             return "Qdrant(url: \"\(url.host ?? url.absoluteString)\", collection: \"\(collection)\", \(authStatus))"
@@ -510,8 +401,6 @@ extension VectorStoreConfig: Equatable {
         switch (lhs, rhs) {
         case (.inMemory, .inMemory):
             return true
-        case (.sqlite(let lPath, let lTable, let lDim), .sqlite(let rPath, let rTable, let rDim)):
-            return lPath == rPath && lTable == rTable && lDim == rDim
         case (.qdrant(let lURL, let lColl, let lKey), .qdrant(let rURL, let rColl, let rKey)):
             return lURL == rURL && lColl == rColl && lKey == rKey
         case (.pinecone(let lKey, let lHost, let lNS), .pinecone(let rKey, let rHost, let rNS)):

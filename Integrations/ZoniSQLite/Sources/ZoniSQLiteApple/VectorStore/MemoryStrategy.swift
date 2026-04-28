@@ -10,6 +10,7 @@
 
 import Foundation
 import Zoni
+import ZoniSQLite
 
 // MARK: - MemoryStrategy Protocol
 

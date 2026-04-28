@@ -43,14 +43,14 @@ Document → Chunking → Embedding → Vector Store → Retrieval → LLM Gener
 1. **Documents** - Text content with metadata
 2. **Chunks** - Smaller pieces for semantic search (default: 512 tokens with 50-token overlap)
 3. **Embeddings** - Vector representations of text chunks
-4. **Vector Store** - Database for similarity search (InMemory, SQLite, PostgreSQL)
+4. **Vector Store** - Database for similarity search (InMemory, Qdrant, Pinecone, optional SQLite/PostgreSQL integrations)
 5. **Retrieval** - Finding relevant chunks based on semantic similarity
 6. **Generation** - LLM generates answers using retrieved context
 
 ### Key Components
 
 - **EmbeddingProvider** - Generates vector embeddings (OpenAI, Cohere, MLX, Model2Vec)
-- **VectorStore** - Stores and searches embeddings (InMemory, SQLite, pgvector)
+- **VectorStore** - Stores and searches embeddings (InMemory, Qdrant, Pinecone, optional SQLite/pgvector integrations)
 - **ChunkingStrategy** - Splits documents into chunks (Fixed, Recursive, Semantic)
 - **DocumentLoader** - Loads various file formats (TXT, MD, HTML, JSON, CSV, PDF)
 - **LLMProvider** - Generates responses (OpenAI, Anthropic, custom)
@@ -278,10 +278,14 @@ let vectorStore = InMemoryVectorStore()
 Persistent storage for single-user applications:
 
 ```swift
+import ZoniSQLite
+
 let vectorStore = try SQLiteVectorStore(
     path: "/path/to/database.sqlite"
 )
 ```
+
+SQLite support lives in the optional `Integrations/ZoniSQLite` package so the default `Zoni` package does not resolve `SQLite.swift`.
 
 ### PostgreSQL Store (with pgvector)
 

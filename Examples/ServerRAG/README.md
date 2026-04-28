@@ -203,7 +203,7 @@ let llmProvider = OpenAILLMProvider(
 Replace InMemoryVectorStore for production:
 
 ```swift
-// Option 1: SQLite for single-server deployments
+// Option 1: SQLite for single-server deployments (requires Integrations/ZoniSQLite)
 let vectorStore = try SQLiteVectorStore(
     path: "./data/vectors.db"
 )
@@ -256,7 +256,7 @@ Environment variables:
 
 ## Notes
 
-- **Data Persistence**: The in-memory vector store loses data on restart. Use SQLite or a database-backed store for persistence.
+- **Data Persistence**: The in-memory vector store loses data on restart. Use the optional SQLite or database-backed integrations for persistence.
 - **Mock Responses**: The mock LLM provider returns placeholder text. Configure a real provider for actual generation.
 - **Rate Limiting**: The example includes rate limiting infrastructure. Configure per-tenant limits via `TenantConfiguration`.
 - **Chunking**: Documents are split using `ParagraphChunker`. Adjust chunking strategy based on your content type.
