@@ -222,3 +222,43 @@ Date: 2026-04-28
   - `swift package describe --type json | rg 'SQLite|sqlite'` found no SQLite package/target declarations in the root manifest.
   - `swift test --filter ZoniTests` passed with 942 tests in 111 suites.
   - `swift test --filter ZoniAppleTests` builds but exits with existing provider/model environment failures, including Apple provider availability expectations and SwiftEmbeddings model download/cache errors.
+
+# Conduit Integration Package Split
+
+Date: 2026-04-28
+
+## Assumptions
+
+- Conduit is useful as an inference adapter, but it is not part of Zoni's default RAG core.
+- Keeping `ZoniConduit` in the root manifest forces default users to resolve Conduit and its transitive dependencies, including `swift-syntax`.
+- A local integration package preserves the adapter for users who need it while reducing the default dependency graph.
+
+## Plan
+
+- [x] Move `ConduitLLMProvider` into `Integrations/ZoniConduit`.
+  - Verify: integration package builds independently.
+- [x] Remove the root `ZoniConduit` product/target and root Conduit package declaration.
+  - Verify: root package dependency tree no longer lists Conduit or SwiftSyntax.
+- [x] Update docs to list Conduit as an optional integration package.
+  - Verify: README no longer lists `ZoniConduit` as a root product.
+- [x] Run root and integration verification.
+  - Verify: `swift build`, root dependency scans, and integration build pass.
+
+## Research Notes
+
+- `ZoniConduit` was a root product solely for the `ConduitLLMProvider` adapter; no root source or test target imports it.
+- The root Conduit dependency pulled `swift-syntax` through Conduit macros, so keeping it in `Package.swift` increased default package resolution even for users who never use Conduit.
+- Building the integration package against the current resolved Conduit release required importing `ConduitAdvanced` explicitly; the facade `Conduit` module does not re-export lower-level protocol/types such as `TextGenerator`, `Message`, and `GenerateConfig`.
+
+## Review
+
+- Added `Integrations/ZoniConduit` as the optional Conduit adapter package.
+- Removed the root `ZoniConduit` product/target and root Conduit package declaration.
+- Moved `ConduitLLMProvider` into the integration package and updated it to import `ConduitAdvanced` for the current Conduit API.
+- Updated README to list Conduit under optional integration packages instead of root products.
+- Verification:
+  - `swift build` passed.
+  - `(cd Integrations/ZoniConduit && swift build)` passed.
+  - `swift package show-dependencies --format text | rg 'Conduit|swift-syntax|SwiftSyntax|conduit'` found no Conduit/SwiftSyntax dependency in the root package graph.
+  - `swift package describe --type json | rg 'Conduit|conduit|swift-syntax|SwiftSyntax'` found no Conduit root manifest declarations.
+  - `swift test --filter ZoniTests` passed with 942 tests in 111 suites.

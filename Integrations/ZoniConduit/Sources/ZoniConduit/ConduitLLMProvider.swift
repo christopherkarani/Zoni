@@ -4,7 +4,7 @@
 
 #if canImport(Conduit)
 import Foundation
-import Conduit
+import ConduitAdvanced
 import Zoni
 
 /// Adapts any Conduit `TextGenerator` into Zoni's `LLMProvider` protocol.

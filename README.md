@@ -42,7 +42,6 @@ Zoni provides multiple products for different use cases:
 | **ZoniServer** | Multi-tenancy, job queue system, and server-side abstractions | Linux, macOS |
 | **ZoniApple** | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) | macOS 14+, iOS 17+ |
 | **ZoniAgents** | SwiftAgents integration layer for agentic workflows | Linux, macOS, iOS |
-| **ZoniConduit** | Optional Conduit inference integration layer | Linux, macOS |
 
 ## Optional Integration Packages
 
@@ -53,6 +52,7 @@ Heavier storage and framework integrations live outside the root package so core
 | **ZoniServerPostgres** | `Integrations/ZoniServerPostgres` | PostgreSQL/pgvector vector store and RAG pipeline factory |
 | **ZoniSQLite** | `Integrations/ZoniSQLite` | SQLite vector store for embedded persistence |
 | **ZoniSQLiteApple** | `Integrations/ZoniSQLite` | Apple SQLite memory strategies and on-device pipeline factories |
+| **ZoniConduit** | `Integrations/ZoniConduit` | Conduit inference adapter for `LLMProvider` |
 
 ## Build and Test
 

@@ -38,17 +38,11 @@ let package = Package(
             name: "ZoniAgents",
             targets: ["ZoniAgents"]
         ),
-        // Optional Conduit inference integration layer
-        .library(
-            name: "ZoniConduit",
-            targets: ["ZoniConduit"]
-        ),
     ],
     dependencies: [
         // Core dependencies
         .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
         .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.20.0"),
-        .package(url: "https://github.com/christopherkarani/Conduit.git", from: "1.0.1"),
 
         // Phase 5A: Cryptography for JWT validation
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
@@ -76,20 +70,6 @@ let package = Package(
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
             ],
             path: "Sources/Zoni"
-        ),
-
-        // Optional Conduit integration target
-        .target(
-            name: "ZoniConduit",
-            dependencies: [
-                "Zoni",
-                .product(
-                    name: "Conduit",
-                    package: "Conduit",
-                    condition: .when(platforms: [.macOS, .iOS, .visionOS])
-                ),
-            ],
-            path: "Sources/ZoniConduit"
         ),
 
         // Server extensions (shared abstractions, multi-tenancy, job system)
