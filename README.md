@@ -43,6 +43,14 @@ Zoni provides multiple products for different use cases:
 | **ZoniAgents** | SwiftAgents integration layer for agentic workflows | Linux, macOS, iOS |
 | **ZoniConduit** | Optional Conduit inference integration layer | Linux, macOS |
 
+## Optional Integration Packages
+
+Heavier storage and framework integrations live outside the root package so core users do not resolve those dependencies by default:
+
+| Integration | Path | Adds |
+|-------------|------|------|
+| **ZoniServerPostgres** | `Integrations/ZoniServerPostgres` | PostgreSQL/pgvector vector store and RAG pipeline factory |
+
 ## Build and Test
 
 Use these commands as the local baseline before opening a PR:
@@ -246,7 +254,7 @@ let memory = InMemoryVectorStore()
 // SQLite (single-node, embedded)
 let sqlite = SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
 
-// PostgreSQL with pgvector (production, multi-tenant)
+// PostgreSQL with pgvector (production, multi-tenant; requires import ZoniServerPostgres)
 let postgres = try await PgVectorStore(
     configuration: PostgresConfiguration(host: "localhost", database: "zoni")
 )
@@ -353,7 +361,6 @@ Built with Swift 6.1 and powered by:
 - [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing
 - [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking
 - [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface
-- [PostgresNIO](https://github.com/vapor/postgres-nio) - PostgreSQL driver
 - [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML
 - [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec
 

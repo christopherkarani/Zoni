@@ -87,3 +87,45 @@ Date: 2026-04-25
   - `swift test --filter ZoniTests` passed with 945 tests in 112 suites.
   - `swift test --filter ZoniServerTests` passed with 9 XCTest cases plus 184 Swift Testing tests.
   - `(cd Examples/ServerRAG && swift build)` passed.
+
+# Postgres Integration Package Split
+
+Date: 2026-04-28
+
+## Assumptions
+
+- PostgreSQL/pgvector support is useful, but it is not part of the smallest default Zoni experience.
+- The root package should not declare Postgres dependencies unless a root product needs them.
+- A local integration package is a safer first split than redesigning the whole core target graph in one pass.
+
+## Plan
+
+- [x] Move Postgres-backed vector store code out of the root `ZoniServer` target.
+  - Verify: root `ZoniServer` no longer imports `PostgresNIO` or `NIOSSL`.
+- [x] Add a separate `Integrations/ZoniServerPostgres` package for pgvector users.
+  - Verify: the integration package builds independently.
+- [x] Update README and server documentation so users can find the optional package.
+  - Verify: product tables and setup snippets no longer advertise `ZoniServerPostgres` as a root product.
+- [x] Re-run package resolution, root builds/tests, and integration build.
+  - Verify: default package stays green and the optional Postgres package compiles.
+
+## Research Notes
+
+- A root target split alone does not reduce SwiftPM resolution when the root manifest still declares the Postgres packages.
+- Moving Postgres into a separate local package removes `postgres-nio` and the direct `swift-nio-ssl` dependency from the default root manifest.
+- Root dependency output still contains TLS transitively through `AsyncHTTPClient`; that is a separate web-loading/provider concern, not Postgres.
+- Building the Postgres integration still builds heavy root `Zoni` dependencies because it depends on the root `Zoni` product. The next larger cleanup should split core protocols/models from optional loaders, HTTP, SQLite, MLX, and embedding providers.
+
+## Review
+
+- Added `Integrations/ZoniServerPostgres` as the optional pgvector package.
+- Removed the root `ZoniServerPostgres` product/target and the root Postgres package declarations.
+- Moved `PgVectorStore` and `RAGPipeline+Postgres` into the integration package.
+- Updated README, server guide, and stale test import references.
+- Verification:
+  - `swift package resolve && swift package describe --type json` passed.
+  - `swift build` passed.
+  - `(cd Integrations/ZoniServerPostgres && swift build)` passed.
+  - `swift package show-dependencies --format text` no longer lists `postgres-nio` in the root dependency tree.
+  - `swift test --filter ZoniTests` passed with 945 tests in 112 suites.
+  - `swift test --filter ZoniServerTests` passed with 9 XCTest cases plus 184 Swift Testing tests.

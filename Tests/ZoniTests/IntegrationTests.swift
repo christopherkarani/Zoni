@@ -23,8 +23,8 @@ import Testing
 import Foundation
 @testable import Zoni
 
-#if canImport(ZoniServer)
-@testable import ZoniServer
+#if canImport(ZoniServerPostgres)
+@testable import ZoniServerPostgres
 #endif
 
 // MARK: - Test Configuration
@@ -253,7 +253,7 @@ struct PineconeIntegrationTests {
 // NOTE: PgVector integration tests temporarily disabled due to API changes.
 // TODO: Update to match current PgVectorStore API when needed.
 /*
-#if canImport(ZoniServer)
+#if canImport(ZoniServerPostgres)
 @Suite("PgVector Integration Tests", .tags(.integration))
 struct PgVectorIntegrationTests {
 

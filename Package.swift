@@ -47,9 +47,6 @@ let package = Package(
 
         // Phase 3: Vector Store dependencies
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.14.0"),
-        .package(url: "https://github.com/vapor/postgres-nio.git", from: "1.20.0"),
-        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.25.0"),
-
         // Phase 5A: Cryptography for JWT validation
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
 
@@ -91,8 +88,6 @@ let package = Package(
             name: "ZoniServer",
             dependencies: [
                 "Zoni",
-                .product(name: "PostgresNIO", package: "postgres-nio"),
-                .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "Crypto", package: "swift-crypto"),
                 .product(name: "Logging", package: "swift-log"),
             ],

@@ -20,9 +20,18 @@ dependencies: [
 ]
 ```
 
+If you are working from a local checkout and need PostgreSQL/pgvector, add the integration package too:
+
+```swift
+dependencies: [
+    .package(path: "Integrations/ZoniServerPostgres")
+]
+```
+
 ### Target Dependencies
 
 Add the Zoni products you need. Web frameworks such as Vapor or Hummingbird should be declared by your app package, not by Zoni.
+PostgreSQL support is provided by the separate `Integrations/ZoniServerPostgres` package.
 
 ```swift
 targets: [
@@ -31,6 +40,7 @@ targets: [
         dependencies: [
             "Zoni",
             "ZoniServer",
+            "ZoniServerPostgres", // from Integrations/ZoniServerPostgres
         ]
     )
 ]
@@ -45,6 +55,7 @@ Create the RAG services in your application startup code, store them in your fra
 ```swift
 import Zoni
 import ZoniServer
+import ZoniServerPostgres
 
 // 1. Create the query engine with your chosen services.
 let vectorStore = try await PgVectorStore.connect(
