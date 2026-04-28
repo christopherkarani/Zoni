@@ -3,6 +3,7 @@
 // GraphRetriever.swift - Graph-based retrieval strategy using BFS traversal
 
 import Foundation
+import ZoniCore
 
 // MARK: - GraphRetriever
 

@@ -3,6 +3,7 @@
 // VectorStoreFactory.swift - Factory for creating vector store instances.
 
 import Foundation
+import ZoniCore
 
 // MARK: - VectorStoreConfig
 

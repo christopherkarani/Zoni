@@ -3,6 +3,7 @@
 // ToolHelpers.swift - Helper extensions for tool development.
 
 import Foundation
+import ZoniCore
 
 // MARK: - SendableValue Accessor Extensions
 

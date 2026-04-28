@@ -3,6 +3,7 @@
 // HuggingFaceEmbedding.swift - HuggingFace Inference API embedding integration
 
 import Foundation
+import ZoniCore
 
 // MARK: - HuggingFaceEmbedding
 

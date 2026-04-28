@@ -2,6 +2,8 @@
 //
 // ResponseSynthesizer.swift - Protocol for synthesizing responses from retrieval context.
 
+import ZoniCore
+
 // MARK: - ResponseSynthesizer
 
 /// A protocol for synthesizing responses from query context and retrieval results.

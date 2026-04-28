@@ -3,6 +3,7 @@
 // Parent-child chunking strategy for hierarchical document segmentation.
 
 import Foundation
+import ZoniCore
 
 // MARK: - ParentChildChunker
 

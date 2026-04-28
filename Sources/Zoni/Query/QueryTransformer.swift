@@ -3,6 +3,7 @@
 // QueryTransformer.swift - Query transformation strategies for improved retrieval.
 
 import Foundation
+import ZoniCore
 
 // MARK: - QueryTransformer Protocol
 

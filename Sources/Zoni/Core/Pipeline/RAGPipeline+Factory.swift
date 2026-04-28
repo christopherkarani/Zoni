@@ -3,6 +3,7 @@
 // RAGPipeline+Factory.swift - Convenience factory methods for RAGPipeline
 
 import Foundation
+import ZoniCore
 
 // MARK: - Factory Methods
 

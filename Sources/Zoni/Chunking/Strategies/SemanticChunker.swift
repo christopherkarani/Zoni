@@ -3,6 +3,7 @@
 // Semantic chunking strategy that uses embeddings to find natural breakpoints.
 
 import Foundation
+import ZoniCore
 
 // MARK: - SemanticChunker
 

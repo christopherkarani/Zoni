@@ -3,6 +3,7 @@
 // DirectoryLoader.swift - Recursive directory loading
 
 import Foundation
+import ZoniCore
 
 /// Actor-based loader for loading all documents from a directory.
 ///

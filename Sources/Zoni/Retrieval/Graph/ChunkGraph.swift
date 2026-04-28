@@ -3,6 +3,7 @@
 // ChunkGraph.swift - Graph data structure for graph-based retrieval
 
 import Foundation
+import ZoniCore
 
 // MARK: - EdgeType
 

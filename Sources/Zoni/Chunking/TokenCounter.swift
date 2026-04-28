@@ -3,6 +3,7 @@
 // Token counting utilities for text chunking and token limit management.
 
 import Foundation
+import ZoniCore
 
 // MARK: - TokenizerModel
 

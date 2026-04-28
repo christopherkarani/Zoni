@@ -3,6 +3,7 @@
 // RAGEvaluator.swift - Evaluation framework for RAG pipeline quality.
 
 import Foundation
+import ZoniCore
 
 // MARK: - Evaluation Types
 

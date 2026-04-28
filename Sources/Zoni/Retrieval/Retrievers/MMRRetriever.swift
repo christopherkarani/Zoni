@@ -3,6 +3,7 @@
 // MMRRetriever.swift - Maximal Marginal Relevance retrieval strategy
 
 import Foundation
+import ZoniCore
 
 // MARK: - MMRRetriever
 

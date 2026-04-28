@@ -5,6 +5,7 @@
 import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
+import ZoniCore
 #endif
 
 // MARK: - PineconeStore

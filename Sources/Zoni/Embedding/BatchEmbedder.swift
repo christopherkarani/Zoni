@@ -3,6 +3,7 @@
 // BatchEmbedder.swift - Efficient batch embedding with concurrency control
 
 import Foundation
+import ZoniCore
 
 // MARK: - BatchEmbedder
 

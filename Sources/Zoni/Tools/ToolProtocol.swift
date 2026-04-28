@@ -3,6 +3,7 @@
 // ToolProtocol.swift - SwiftAgents-compatible tool protocol definitions.
 
 import Foundation
+import ZoniCore
 
 // MARK: - Tool Protocol
 

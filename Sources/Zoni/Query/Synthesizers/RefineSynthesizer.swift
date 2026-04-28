@@ -2,6 +2,8 @@
 //
 // RefineSynthesizer.swift - Iterative refinement response synthesis.
 
+import ZoniCore
+
 // MARK: - RefineSynthesizer
 
 /// A response synthesizer that iteratively refines answers with each context chunk.

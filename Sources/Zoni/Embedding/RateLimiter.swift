@@ -3,6 +3,7 @@
 // RateLimiter.swift - Token bucket rate limiting for API requests
 
 import Foundation
+import ZoniCore
 
 // MARK: - RateLimiter
 

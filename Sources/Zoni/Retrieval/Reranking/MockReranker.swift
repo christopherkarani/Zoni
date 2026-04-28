@@ -3,6 +3,7 @@
 // MockReranker.swift - Mock reranker for testing
 
 import Foundation
+import ZoniCore
 
 // MARK: - MockReranker
 

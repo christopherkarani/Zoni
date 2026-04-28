@@ -3,6 +3,7 @@
 // RAGPrompts.swift - Prompt templates for RAG query operations.
 
 import Foundation
+import ZoniCore
 
 // MARK: - RAGPrompts
 

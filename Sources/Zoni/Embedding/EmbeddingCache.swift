@@ -3,6 +3,7 @@
 // EmbeddingCache.swift - LRU cache for embedding results
 
 import Foundation
+import ZoniCore
 
 // MARK: - EmbeddingCache
 

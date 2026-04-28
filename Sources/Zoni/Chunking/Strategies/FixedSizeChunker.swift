@@ -3,6 +3,7 @@
 // Fixed-size chunking strategy for splitting documents into uniform segments.
 
 import Foundation
+import ZoniCore
 
 // MARK: - FixedSizeChunker
 

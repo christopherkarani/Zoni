@@ -4,6 +4,7 @@
 
 import Foundation
 import SwiftSoup
+import ZoniCore
 
 /// A document loader for HTML files with CSS selector-based extraction.
 ///
@@ -84,7 +85,7 @@ public struct HTMLLoader: DocumentLoader, Sendable {
     /// - Parameter url: The file URL to load from.
     /// - Returns: A document containing the extracted text content with appropriate metadata.
     /// - Throws: `ZoniError.loadingFailed` if the file cannot be read.
-    public func load(from url: URL) async throws -> Document {
+    public func load(from url: URL) async throws -> ZoniCore.Document {
         let data: Data
         do {
             data = try Data(contentsOf: url)
@@ -108,7 +109,7 @@ public struct HTMLLoader: DocumentLoader, Sendable {
     ///   - metadata: Optional metadata to attach to the document.
     /// - Returns: A document containing the extracted text content.
     /// - Throws: `ZoniError.invalidData` if the data cannot be decoded as UTF-8.
-    public func load(from data: Data, metadata: DocumentMetadata?) async throws -> Document {
+    public func load(from data: Data, metadata: DocumentMetadata?) async throws -> ZoniCore.Document {
         guard let html = String(data: data, encoding: .utf8) else {
             throw ZoniError.invalidData(reason: "Unable to decode HTML as UTF-8")
         }
@@ -161,7 +162,7 @@ public struct HTMLLoader: DocumentLoader, Sendable {
             content = (try? doc.body()?.text()) ?? ""
         }
 
-        return Document(content: content, metadata: finalMetadata)
+        return ZoniCore.Document(content: content, metadata: finalMetadata)
     }
 
     // MARK: - Private Helpers

@@ -18,6 +18,11 @@ let package = Package(
             name: "Zoni",
             targets: ["Zoni"]
         ),
+        // Lightweight contracts and value types for custom integrations
+        .library(
+            name: "ZoniCore",
+            targets: ["ZoniCore"]
+        ),
         // Server-side extensions (multi-tenancy, job system, shared abstractions)
         .library(
             name: "ZoniServer",
@@ -58,10 +63,17 @@ let package = Package(
         .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.8"),
     ],
     targets: [
+        // Lightweight contracts and value types
+        .target(
+            name: "ZoniCore",
+            path: "Sources/ZoniCore"
+        ),
+
         // Core target with document loading
         .target(
             name: "Zoni",
             dependencies: [
+                "ZoniCore",
                 .product(name: "SwiftSoup", package: "SwiftSoup"),
                 .product(name: "AsyncHTTPClient", package: "async-http-client"),
                 .product(name: "SQLite", package: "SQLite.swift"),

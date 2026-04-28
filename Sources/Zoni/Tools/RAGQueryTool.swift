@@ -3,6 +3,7 @@
 // RAGQueryTool.swift - Full RAG Q&A tool for knowledge base querying.
 
 import Foundation
+import ZoniCore
 
 // MARK: - RAGQueryTool
 

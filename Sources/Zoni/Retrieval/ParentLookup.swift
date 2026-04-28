@@ -2,6 +2,8 @@
 //
 // ParentLookup.swift - Protocol for resolving parent chunks from child chunk IDs.
 
+import ZoniCore
+
 // MARK: - ParentLookup
 
 /// A protocol for resolving parent chunks from child chunk references.

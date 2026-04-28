@@ -37,6 +37,7 @@ Zoni provides multiple products for different use cases:
 
 | Product | Description | Platforms |
 |---------|-------------|-----------|
+| **ZoniCore** | Lightweight contracts, value types, configuration, errors, and metadata filtering for custom integrations | Linux, macOS, iOS, tvOS, watchOS, visionOS |
 | **Zoni** | Core RAG library with document loading, chunking, embeddings, and vector stores | Linux, macOS, iOS, tvOS, watchOS, visionOS |
 | **ZoniServer** | Multi-tenancy, job queue system, and server-side abstractions | Linux, macOS |
 | **ZoniApple** | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) | macOS 14+, iOS 17+ |

@@ -6,6 +6,7 @@ import Foundation
 
 #if canImport(PDFKit)
 import PDFKit
+import ZoniCore
 #endif
 
 /// A document loader for PDF files.

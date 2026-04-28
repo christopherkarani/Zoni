@@ -3,6 +3,7 @@
 // Recursive chunking strategy using hierarchical separators (LlamaIndex-style).
 
 import Foundation
+import ZoniCore
 
 // MARK: - RecursiveChunker
 

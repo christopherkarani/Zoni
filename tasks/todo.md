@@ -129,3 +129,48 @@ Date: 2026-04-28
   - `swift package show-dependencies --format text` no longer lists `postgres-nio` in the root dependency tree.
   - `swift test --filter ZoniTests` passed with 945 tests in 112 suites.
   - `swift test --filter ZoniServerTests` passed with 9 XCTest cases plus 184 Swift Testing tests.
+
+# ZoniCore Target Split
+
+Date: 2026-04-28
+
+## Assumptions
+
+- The first useful split is an API boundary, not a full adapter extraction: move stable RAG contracts and data types into `ZoniCore`, then keep the existing `Zoni` product as the batteries-included module.
+- `Zoni` should re-export `ZoniCore` so existing consumers can continue importing `Zoni`.
+- This pass should avoid moving concrete loaders/providers/stores unless needed for the core boundary.
+
+## Plan
+
+- [x] Audit current imports and classify pure core files versus dependency-backed implementation files.
+  - Verify: identify files that can compile with Foundation-only dependencies.
+- [x] Add a `ZoniCore` product/target and move stable core contracts/types into it.
+  - Verify: `swift package describe --type json` lists `ZoniCore`; `Zoni` depends on and re-exports it.
+- [x] Update root implementation files and downstream targets to import the new core module where needed.
+  - Verify: `swift build` compiles without ambiguous or missing symbols.
+- [x] Run focused tests and package graph checks.
+  - Verify: `swift test --filter ZoniTests`, `swift test --filter ZoniServerTests`, and `swift package describe --type json` pass.
+- [x] Document the split and remaining dependency graph work.
+  - Verify: README/task notes explain `ZoniCore` versus `Zoni`.
+
+## Research Notes
+
+- `ZoniCore` can stay dependency-free for this pass by owning values, protocols, configuration, error types, and metadata filter matching.
+- `Zoni` remains the batteries-included module and re-exports `ZoniCore`, preserving existing `import Zoni` consumers.
+- `HTMLLoader` needed explicit `ZoniCore.Document` return/construction because SwiftSoup also exposes a `Document` type.
+- This is primarily an API boundary split. The root package manifest still declares HTTP, HTML, SQLite, Conduit, MLX, and swift-embeddings packages for existing products. Further dependency graph reduction requires moving adapters into separate packages or removing those dependencies from the root manifest.
+
+## Review
+
+- Added a new `ZoniCore` library product and dependency-free target.
+- Moved stable core contracts and types into `Sources/ZoniCore`: document/chunk/embedding/metadata/result types, provider/store/retriever/loading/chunking protocols, configuration, errors, similarity protocol, and metadata filter matching.
+- Updated `Zoni` to depend on and re-export `ZoniCore`, keeping existing `import Zoni` consumers working.
+- Added `import ZoniCore` to root implementation files and resolved the SwiftSoup `Document` ambiguity in `HTMLLoader`.
+- Updated README product docs to list `ZoniCore`.
+- Verification:
+  - `swift package describe --type json` passed and lists `ZoniCore`.
+  - `swift build` passed.
+  - `swift build --target ZoniCore` passed.
+  - `swift test --filter ZoniTests` passed with 945 tests in 112 suites.
+  - `swift test --filter ZoniServerTests` passed with 9 XCTest cases plus 184 Swift Testing tests.
+  - `(cd Integrations/ZoniServerPostgres && swift build)` passed.

@@ -5,6 +5,7 @@
 import Foundation
 import AsyncHTTPClient
 import NIOCore
+import ZoniCore
 
 // MARK: - VoyageEmbedding
 

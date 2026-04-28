@@ -2,6 +2,8 @@
 //
 // ContextBuilder.swift - Builds context strings from retrieval results for LLM prompts.
 
+import ZoniCore
+
 // MARK: - ContextChunk
 
 /// A structured representation of a context chunk for LLM prompts.

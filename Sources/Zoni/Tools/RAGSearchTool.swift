@@ -3,6 +3,7 @@
 // RAGSearchTool.swift - Vector search tool for knowledge base retrieval.
 
 import Foundation
+import ZoniCore
 
 // MARK: - RAGSearchTool
 

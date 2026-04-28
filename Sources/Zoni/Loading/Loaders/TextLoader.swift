@@ -3,6 +3,7 @@
 // TextLoader.swift - Loader for plain text documents
 
 import Foundation
+import ZoniCore
 
 /// A document loader for plain text files.
 ///

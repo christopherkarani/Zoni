@@ -3,6 +3,8 @@
 // A cross-platform RAG framework that works on Linux, macOS, and iOS.
 // This module contains the core protocols, types, and pipeline skeleton.
 
+@_exported import ZoniCore
+
 // MARK: - Public API
 
 /// Zoni is a Retrieval-Augmented Generation (RAG) framework for Swift.

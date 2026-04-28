@@ -3,6 +3,7 @@
 // VectorStoreParentLookup.swift - Parent chunk lookup with LRU caching.
 
 import Foundation
+import ZoniCore
 
 // MARK: - VectorStoreParentLookup
 

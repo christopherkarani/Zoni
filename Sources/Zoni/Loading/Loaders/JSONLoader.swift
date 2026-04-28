@@ -3,6 +3,7 @@
 // JSONLoader.swift - Loader for JSON files
 
 import Foundation
+import ZoniCore
 
 /// A document loader for JSON files with optional path-based extraction.
 ///

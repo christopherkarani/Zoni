@@ -3,6 +3,7 @@
 // LoaderRegistry.swift - Registry for document loaders
 
 import Foundation
+import ZoniCore
 
 /// Actor-based registry for managing document loaders.
 ///

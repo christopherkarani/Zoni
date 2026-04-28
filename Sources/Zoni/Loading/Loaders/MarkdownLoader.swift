@@ -3,6 +3,7 @@
 // MarkdownLoader.swift - Loader for Markdown documents with frontmatter support
 
 import Foundation
+import ZoniCore
 
 /// A document loader for Markdown files with YAML frontmatter support.
 ///
