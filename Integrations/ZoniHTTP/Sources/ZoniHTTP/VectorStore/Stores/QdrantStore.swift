@@ -6,6 +6,7 @@ import Foundation
 import AsyncHTTPClient
 import NIOCore
 import NIOHTTP1
+import Zoni
 import ZoniCore
 
 // MARK: - QdrantStore

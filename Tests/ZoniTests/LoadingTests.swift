@@ -1,6 +1,9 @@
 import Testing
 import Foundation
 @testable import Zoni
+#if canImport(ZoniHTTP)
+@testable import ZoniHTTP
+#endif
 
 // MARK: - LoadingUtils Tests
 
@@ -1536,6 +1539,7 @@ struct MarkdownLoaderTests {
 
 // MARK: - WebLoader Tests
 
+#if canImport(ZoniHTTP)
 @Suite("WebLoader Tests")
 struct WebLoaderTests {
 
@@ -2089,6 +2093,7 @@ struct HTMLLoaderTests {
         #expect(document.metadata.custom["og:title"]?.stringValue == "OG Title")
     }
 }
+#endif
 
 // MARK: - PDFLoader Tests
 

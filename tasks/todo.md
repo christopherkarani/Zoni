@@ -262,3 +262,47 @@ Date: 2026-04-28
   - `swift package show-dependencies --format text | rg 'Conduit|swift-syntax|SwiftSyntax|conduit'` found no Conduit/SwiftSyntax dependency in the root package graph.
   - `swift package describe --type json | rg 'Conduit|conduit|swift-syntax|SwiftSyntax'` found no Conduit root manifest declarations.
   - `swift test --filter ZoniTests` passed with 942 tests in 111 suites.
+
+# HTTP Integration Package Split
+
+Date: 2026-04-30
+
+## Assumptions
+
+- HTTP embedding providers, HTML/web loaders, managed vector stores, and network reranking are useful integrations, but they are not required for the core local RAG package.
+- Keeping `SwiftSoup` and `AsyncHTTPClient` in the root manifest forces default users to resolve NIO/TLS-era networking packages even when they only use in-memory/local RAG.
+- A local `ZoniHTTP` package preserves the old functionality while making the root package graph easier to build and reason about.
+
+## Plan
+
+- [x] Move HTTP/cloud/web-backed implementation files into `Integrations/ZoniHTTP`.
+  - Verify: the integration package builds and runs package-local tests.
+- [x] Remove `SwiftSoup` and `AsyncHTTPClient` from the root manifest.
+  - Verify: root dependency scans no longer list `SwiftSoup`, `async-http-client`, or NIO/TLS packages.
+- [x] Tighten root default APIs so they do not expose moved adapters.
+  - Verify: `LoaderRegistry.defaultRegistry()` no longer registers `HTMLLoader`; root `VectorStoreFactory` only creates in-memory stores.
+- [x] Relocate/gate tests and add focused `ZoniHTTPTests`.
+  - Verify: root `ZoniTests` and integration-local tests pass.
+- [x] Update docs to make `ZoniHTTP` the explicit import/package for web, HTML, cloud embeddings, Qdrant/Pinecone, and Cohere reranking.
+  - Verify: README and guide examples no longer imply these types are root-only.
+
+## Research Notes
+
+- The moved HTTP package owns `OpenAIEmbedding`, `CohereEmbedding`, `MistralEmbedding`, `VoyageEmbedding`, `OllamaEmbedding`, `CohereReranker`, `HTMLLoader`, `WebLoader`, `QdrantStore`, and `PineconeStore`.
+- `LoaderRegistry.defaultRegistry()` and `VectorStoreFactory` are the main public boundaries that would otherwise keep moved functionality visible from root.
+- After this split, root `swift build` still builds Apple/server products when invoked at package level because they are still root products. That is now the next large source of graph weight, separate from HTTP/NIO.
+- The first post-move test run hit `_AtomicsShims` due stale SwiftPM build artifacts. `swift package clean` followed by a clean build/test removed the stale module reference.
+
+## Review
+
+- Added `Integrations/ZoniHTTP` with its own package manifest and focused tests.
+- Removed root `SwiftSoup` and `AsyncHTTPClient` declarations and moved the HTTP/web/cloud adapter sources out of `Sources/Zoni`.
+- Simplified root `LoaderRegistry.defaultRegistry()` and `VectorStoreFactory` so the root package does not advertise adapters it no longer owns.
+- Updated root tests to compile without `ZoniHTTP`, with package-local tests covering the moved embedding metadata and loader behavior.
+- Updated README, getting started docs, server guide, and examples to call out `ZoniHTTP` as optional.
+- Verification:
+  - `swift package clean` completed to remove stale build metadata from the old HTTP graph.
+  - `swift build` passed.
+  - `swift package show-dependencies --format text | rg 'SwiftSoup|swiftsoup|async-http-client|AsyncHTTPClient|swift-nio|swift-nio-ssl|swift-nio-http2'` found no root dependency matches.
+  - `(cd Integrations/ZoniHTTP && swift test --filter ZoniHTTPTests)` passed with 6 tests in 2 suites.
+  - `swift test --filter ZoniTests` passed with 891 tests in 103 suites.

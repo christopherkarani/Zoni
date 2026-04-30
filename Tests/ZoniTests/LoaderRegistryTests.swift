@@ -236,17 +236,6 @@ struct LoaderRegistryTests {
             #expect(await registry.canLoad(markdownURL) == true)
         }
 
-        @Test("Default registry has HTMLLoader")
-        func defaultHasHTMLLoader() async {
-            let registry = await LoaderRegistry.defaultRegistry()
-
-            let htmlURL = URL(fileURLWithPath: "/path/to/file.html")
-            let htmURL = URL(fileURLWithPath: "/path/to/file.htm")
-
-            #expect(await registry.canLoad(htmlURL) == true)
-            #expect(await registry.canLoad(htmURL) == true)
-        }
-
         @Test("Default registry has JSONLoader")
         func defaultHasJSONLoader() async {
             let registry = await LoaderRegistry.defaultRegistry()
@@ -288,10 +277,6 @@ struct LoaderRegistryTests {
             // MarkdownLoader extensions
             #expect(extensions.contains("md"))
             #expect(extensions.contains("markdown"))
-
-            // HTMLLoader extensions
-            #expect(extensions.contains("html"))
-            #expect(extensions.contains("htm"))
 
             // JSONLoader extensions
             #expect(extensions.contains("json"))

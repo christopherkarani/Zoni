@@ -54,6 +54,7 @@ Create the RAG services in your application startup code, store them in your fra
 
 ```swift
 import Zoni
+import ZoniHTTP
 import ZoniServer
 import ZoniServerPostgres
 

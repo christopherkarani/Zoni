@@ -58,10 +58,12 @@ public actor LoaderRegistry {
     /// This method returns a new registry populated with loaders for:
     /// - Text files (.txt, .text)
     /// - Markdown files (.md, .markdown)
-    /// - HTML files (.html, .htm)
     /// - JSON files (.json)
     /// - CSV files (.csv, .tsv)
     /// - PDF files (.pdf)
+    ///
+    /// HTML and web-page loading live in the optional `ZoniHTTP` integration
+    /// package so the default package does not resolve HTTP/HTML dependencies.
     ///
     /// - Returns: A registry with all built-in document loaders registered.
     ///
@@ -74,7 +76,6 @@ public actor LoaderRegistry {
         let registry = LoaderRegistry()
         await registry.register(TextLoader())
         await registry.register(MarkdownLoader())
-        await registry.register(HTMLLoader())
         await registry.register(JSONLoader())
         await registry.register(CSVLoader())
         await registry.register(PDFLoader())

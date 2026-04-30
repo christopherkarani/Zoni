@@ -4,6 +4,7 @@
 
 import Foundation
 import SwiftSoup
+import Zoni
 import ZoniCore
 
 /// A document loader for HTML files with CSS selector-based extraction.

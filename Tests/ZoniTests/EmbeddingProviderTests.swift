@@ -5,6 +5,9 @@
 import Testing
 import Foundation
 @testable import Zoni
+#if canImport(ZoniHTTP)
+@testable import ZoniHTTP
+#endif
 
 // MARK: - MockEmbedding Tests
 
@@ -557,6 +560,7 @@ struct BatchEmbedderTests {
 
 // MARK: - OpenAI Model Tests
 
+#if canImport(ZoniHTTP)
 @Suite("OpenAIEmbedding Model Tests")
 struct OpenAIModelTests {
 
@@ -667,6 +671,7 @@ struct OllamaEmbeddingTests {
         #expect(OllamaEmbedding.KnownModel.mxbaiEmbedLarge == "mxbai-embed-large")
     }
 }
+#endif
 
 // MARK: - Array Chunking Tests
 

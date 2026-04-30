@@ -5,6 +5,7 @@
 import Foundation
 import AsyncHTTPClient
 import NIOCore
+import Zoni
 import ZoniCore
 
 /// Actor-based loader for fetching and parsing web pages.

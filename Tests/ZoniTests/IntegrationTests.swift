@@ -22,6 +22,9 @@
 import Testing
 import Foundation
 @testable import Zoni
+#if canImport(ZoniHTTP)
+@testable import ZoniHTTP
+#endif
 
 #if canImport(ZoniServerPostgres)
 @testable import ZoniServerPostgres
@@ -82,6 +85,7 @@ private func makeEmbedding(dimensions: Int = 1536, seed: Int = 0) -> Embedding {
 
 // MARK: - Qdrant Integration Tests
 
+#if canImport(ZoniHTTP)
 @Suite(
     "Qdrant Integration Tests",
     .tags(.integration),
@@ -247,6 +251,7 @@ struct PineconeIntegrationTests {
         #expect(afterDelete.isEmpty, "Chunks should be deleted")
     }
 }
+#endif
 
 // MARK: - PgVector Integration Tests
 

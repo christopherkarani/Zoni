@@ -89,6 +89,7 @@ To use real providers instead of mocks:
 
 ```swift
 import Zoni
+import ZoniHTTP
 
 let embedder = OpenAIEmbedding(apiKey: "sk-...")
 let llm = OpenAIProvider(apiKey: "sk-...", model: "gpt-4")
@@ -97,6 +98,8 @@ let llm = OpenAIProvider(apiKey: "sk-...", model: "gpt-4")
 ### Other Providers
 
 ```swift
+import ZoniHTTP
+
 // Cohere
 let embedder = CohereEmbedding(apiKey: "...")
 

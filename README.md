@@ -10,10 +10,10 @@ Zoni is a comprehensive RAG framework built with Swift 6.1. It provides document
 
 ## Features
 
-- **Document Loading** - PDF, Markdown, HTML, JSON, CSV, plain text, and web pages
+- **Document Loading** - PDF, Markdown, JSON, CSV, plain text, plus optional HTML and web-page loading
 - **Smart Chunking** - Recursive, semantic, markdown-aware, code-aware, sentence, and paragraph strategies
-- **Multiple Embeddings** - OpenAI, Cohere, Voyage, Ollama, Apple NLEmbedding, MLX, Foundation Models
-- **Vector Stores** - In-memory, Qdrant, Pinecone, plus optional PostgreSQL+pgvector and SQLite integrations
+- **Multiple Embeddings** - Mock/local core embeddings, optional OpenAI/Cohere/Voyage/Ollama integrations, Apple NLEmbedding, MLX, Foundation Models
+- **Vector Stores** - In-memory, plus optional Qdrant, Pinecone, PostgreSQL+pgvector, and SQLite integrations
 - **Advanced Retrieval** - Hybrid search, multi-query expansion, MMR diversity, reranking
 - **Query Engine** - Multiple response synthesis strategies (compact, refine, tree-summarize)
 - **Agent Tools** - SwiftAgents-compatible tools for RAG operations
@@ -53,6 +53,7 @@ Heavier storage and framework integrations live outside the root package so core
 | **ZoniSQLite** | `Integrations/ZoniSQLite` | SQLite vector store for embedded persistence |
 | **ZoniSQLiteApple** | `Integrations/ZoniSQLite` | Apple SQLite memory strategies and on-device pipeline factories |
 | **ZoniConduit** | `Integrations/ZoniConduit` | Conduit inference adapter for `LLMProvider` |
+| **ZoniHTTP** | `Integrations/ZoniHTTP` | HTTP embedding providers, HTML/web loaders, Qdrant/Pinecone stores, and Cohere reranking |
 
 ## Build and Test
 
@@ -85,6 +86,7 @@ Build a simple RAG pipeline for server-side applications:
 
 ```swift
 import Zoni
+import ZoniHTTP
 
 // Create pipeline components
 let embedding = OpenAIEmbedding(
@@ -193,7 +195,7 @@ Zoni follows a modular architecture with clear protocol boundaries:
             │             │             │
     ┌───────▼─────────────▼─────────────▼─────────┐
     │            VectorStore                       │
-    │ (In-memory, Qdrant, optional integrations)  │
+    │      (In-memory, optional integrations)      │
     └───────┬──────────────────────────────────────┘
             │
     ┌───────▼──────┐
@@ -208,6 +210,8 @@ Zoni follows a modular architecture with clear protocol boundaries:
 Load documents from various sources with automatic format detection:
 
 ```swift
+import ZoniHTTP
+
 // Register loaders
 await pipeline.registerLoader(PDFLoader())
 await pipeline.registerLoader(MarkdownLoader())
@@ -232,6 +236,8 @@ Choose the right chunking strategy for your content:
 Multiple embedding options for different needs:
 
 ```swift
+import ZoniHTTP
+
 // Cloud-based (high quality)
 let openai = OpenAIEmbedding(apiKey: "...", model: .textEmbedding3Large)
 let cohere = CohereEmbedding(apiKey: "...", model: .embedEnglishV3)
@@ -252,6 +258,8 @@ let swift = try SwiftEmbeddingsProvider(model: .model2VecBase)  // Ultra-fast
 Flexible storage backends:
 
 ```swift
+import ZoniHTTP
+
 // In-memory (development/testing)
 let memory = InMemoryVectorStore()
 
@@ -263,7 +271,7 @@ let postgres = try await PgVectorStore(
     configuration: PostgresConfiguration(host: "localhost", database: "zoni")
 )
 
-// Managed services
+// Managed services (requires ZoniHTTP)
 let qdrant = QdrantStore(url: "http://localhost:6333", collection: "docs")
 let pinecone = PineconeStore(apiKey: "...", index: "zoni-index")
 ```
@@ -272,6 +280,8 @@ let pinecone = PineconeStore(apiKey: "...", index: "zoni-index")
 Combine multiple retrieval strategies:
 
 ```swift
+import ZoniHTTP
+
 // Hybrid search (keyword + semantic)
 let hybrid = HybridRetriever(
     vectorRetriever: vectorRetriever,
@@ -362,8 +372,8 @@ Zoni is released under the MIT License. See [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 Built with Swift 6.1 and powered by:
-- [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing
-- [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking
+- [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing in the optional `ZoniHTTP` package
+- [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking in the optional `ZoniHTTP` package
 - [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface for the optional `ZoniSQLite` package
 - [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML
 - [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec

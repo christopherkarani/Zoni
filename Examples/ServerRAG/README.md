@@ -184,6 +184,7 @@ Replace the mock providers in `configure.swift`:
 
 ```swift
 import OpenAI  // Add OpenAI Swift SDK
+import ZoniHTTP
 
 // Replace MockEmbedding with OpenAI embeddings
 let embeddingProvider = OpenAIEmbedding(
@@ -213,7 +214,9 @@ let vectorStore = try await PgVectorStore(
     connectionString: Environment.get("DATABASE_URL")!
 )
 
-// Option 3: Pinecone for managed vector search
+// Option 3: Pinecone for managed vector search (requires ZoniHTTP)
+import ZoniHTTP
+
 let vectorStore = PineconeStore(
     apiKey: Environment.get("PINECONE_API_KEY")!,
     indexName: "my-index"

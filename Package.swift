@@ -40,10 +40,6 @@ let package = Package(
         ),
     ],
     dependencies: [
-        // Core dependencies
-        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.6.0"),
-        .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.20.0"),
-
         // Phase 5A: Cryptography for JWT validation
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
 
@@ -66,8 +62,6 @@ let package = Package(
             name: "Zoni",
             dependencies: [
                 "ZoniCore",
-                .product(name: "SwiftSoup", package: "SwiftSoup"),
-                .product(name: "AsyncHTTPClient", package: "async-http-client"),
             ],
             path: "Sources/Zoni"
         ),
