@@ -40,7 +40,6 @@ Zoni provides multiple products for different use cases:
 | **ZoniCore** | Lightweight contracts, value types, configuration, errors, and metadata filtering for custom integrations | Linux, macOS, iOS, tvOS, watchOS, visionOS |
 | **Zoni** | Core RAG library with document loading, chunking, embeddings, and vector stores | Linux, macOS, iOS, tvOS, watchOS, visionOS |
 | **ZoniServer** | Multi-tenancy, job queue system, and server-side abstractions | Linux, macOS |
-| **ZoniApple** | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) | macOS 14+, iOS 17+ |
 | **ZoniAgents** | SwiftAgents integration layer for agentic workflows | Linux, macOS, iOS |
 
 ## Optional Integration Packages
@@ -54,6 +53,7 @@ Heavier storage and framework integrations live outside the root package so core
 | **ZoniSQLiteApple** | `Integrations/ZoniSQLite` | Apple SQLite memory strategies and on-device pipeline factories |
 | **ZoniConduit** | `Integrations/ZoniConduit` | Conduit inference adapter for `LLMProvider` |
 | **ZoniHTTP** | `Integrations/ZoniHTTP` | HTTP embedding providers, HTML/web loaders, Qdrant/Pinecone stores, and Cohere reranking |
+| **ZoniApple** | `Integrations/ZoniApple` | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) |
 
 ## Build and Test
 
@@ -341,9 +341,11 @@ Zoni includes comprehensive test coverage:
 # Run core tests that do not require external services
 swift test --filter ZoniTests
 
-# Run specific product suites
+# Run specific root product suites
 swift test --filter ZoniServerTests
-swift test --filter ZoniAppleTests
+
+# Run Apple integration tests
+(cd Integrations/ZoniApple && swift test --filter ZoniAppleTests)
 
 # Run integration tests that require Qdrant/Pinecone configuration
 ZONI_RUN_INTEGRATION_TESTS=1 swift test --filter IntegrationTests
@@ -375,8 +377,8 @@ Built with Swift 6.1 and powered by:
 - [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing in the optional `ZoniHTTP` package
 - [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking in the optional `ZoniHTTP` package
 - [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface for the optional `ZoniSQLite` package
-- [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML
-- [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec
+- [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML in the optional `ZoniApple` package
+- [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec in the optional `ZoniApple` package
 
 ---
 

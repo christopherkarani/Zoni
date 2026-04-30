@@ -28,11 +28,6 @@ let package = Package(
             name: "ZoniServer",
             targets: ["ZoniServer"]
         ),
-        // Apple platform extensions (NaturalLanguage, Accelerate, etc.)
-        .library(
-            name: "ZoniApple",
-            targets: ["ZoniApple"]
-        ),
         // SwiftAgents integration layer
         .library(
             name: "ZoniAgents",
@@ -45,10 +40,6 @@ let package = Package(
 
         // Phase 5A: Logging for production deployments
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
-
-        // Phase 5B: Apple Platform Extensions
-        .package(url: "https://github.com/ml-explore/mlx-swift.git", from: "0.18.0"),
-        .package(url: "https://github.com/jkrukowski/swift-embeddings.git", from: "0.0.8"),
     ],
     targets: [
         // Lightweight contracts and value types
@@ -77,22 +68,6 @@ let package = Package(
             path: "Sources/ZoniServer"
         ),
 
-        // Apple platform extensions (Phase 5B)
-        .target(
-            name: "ZoniApple",
-            dependencies: [
-                "Zoni",
-                // MLX for GPU-accelerated embeddings (Apple Silicon only)
-                .product(name: "MLX", package: "mlx-swift", condition: .when(platforms: [.macOS, .iOS])),
-                .product(name: "MLXNN", package: "mlx-swift", condition: .when(platforms: [.macOS, .iOS])),
-                .product(name: "MLXLinalg", package: "mlx-swift", condition: .when(platforms: [.macOS, .iOS])),
-                // Swift Embeddings for fast Model2Vec
-                .product(name: "Embeddings", package: "swift-embeddings"),
-            ],
-            path: "Sources/ZoniApple"
-            // Note: Metal shaders are compiled at runtime from inline source in MetalVectorCompute.swift
-        ),
-
         // SwiftAgents integration layer
         .target(
             name: "ZoniAgents",
@@ -113,14 +88,6 @@ let package = Package(
             dependencies: ["ZoniServer"],
             path: "Tests/ZoniServerTests"
         ),
-
-        // Apple platform extension tests (Phase 5B)
-        .testTarget(
-            name: "ZoniAppleTests",
-            dependencies: ["ZoniApple"],
-            path: "Tests/ZoniAppleTests"
-        ),
-
         // SwiftAgents integration tests
         .testTarget(
             name: "ZoniAgentsTests",

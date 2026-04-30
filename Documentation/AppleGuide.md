@@ -18,19 +18,22 @@ Add Zoni to your Swift package dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/christopherkarani/zoni", from: "1.0.0")
+    .package(url: "https://github.com/christopherkarani/zoni", from: "1.0.0"),
+    .package(path: "Integrations/ZoniApple")
 ]
 
 targets: [
     .target(
         name: "MyApp",
         dependencies: [
-            "Zoni",
-            "ZoniApple"
+            .product(name: "Zoni", package: "zoni"),
+            .product(name: "ZoniApple", package: "ZoniApple")
         ]
     )
 ]
 ```
+
+`ZoniApple` lives in `Integrations/ZoniApple` so default server/core users do not resolve MLX or swift-embeddings.
 
 ## Privacy-First RAG
 

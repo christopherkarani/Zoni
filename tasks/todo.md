@@ -306,3 +306,24 @@ Date: 2026-04-30
   - `swift package show-dependencies --format text | rg 'SwiftSoup|swiftsoup|async-http-client|AsyncHTTPClient|swift-nio|swift-nio-ssl|swift-nio-http2'` found no root dependency matches.
   - `(cd Integrations/ZoniHTTP && swift test --filter ZoniHTTPTests)` passed with 6 tests in 2 suites.
   - `swift test --filter ZoniTests` passed with 891 tests in 103 suites.
+
+# Apple Integration Package Split
+
+Date: 2026-04-30
+
+## Assumptions
+
+- `ZoniApple` is important for Apple-platform users, but MLX and swift-embeddings should not be part of the root package graph for server/core users.
+- Moving the existing `ZoniApple` product into `Integrations/ZoniApple` is the least disruptive next split because the implementation is already target-isolated under `Sources/ZoniApple`.
+- Existing optional packages and examples that use `ZoniApple` can depend on the local integration package directly.
+
+## Plan
+
+- [ ] Move `Sources/ZoniApple` and `Tests/ZoniAppleTests` into `Integrations/ZoniApple`.
+  - Verify: integration package can build from its own manifest.
+- [ ] Remove root `ZoniApple` product/target/tests and root MLX/swift-embeddings dependencies.
+  - Verify: root dependency scans no longer list MLX, swift-embeddings, or their transitive package graph.
+- [ ] Update dependent local packages/examples/docs to point at `Integrations/ZoniApple`.
+  - Verify: `ZoniSQLite` and iOS example manifests still resolve.
+- [ ] Run root and focused integration verification.
+  - Verify: `swift build`, `swift test --filter ZoniTests`, and focused `ZoniApple` checks pass or have documented environment blockers.

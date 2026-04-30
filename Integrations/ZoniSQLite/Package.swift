@@ -23,6 +23,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../.."),
+        .package(path: "../ZoniApple"),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.14.0"),
     ],
     targets: [
@@ -37,7 +38,7 @@ let package = Package(
             name: "ZoniSQLiteApple",
             dependencies: [
                 .product(name: "Zoni", package: "zoni"),
-                .product(name: "ZoniApple", package: "zoni"),
+                .product(name: "ZoniApple", package: "ZoniApple"),
                 "ZoniSQLite",
             ]
         ),
