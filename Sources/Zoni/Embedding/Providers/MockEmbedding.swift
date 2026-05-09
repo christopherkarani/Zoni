@@ -3,6 +3,7 @@
 // MockEmbedding.swift - Mock embedding provider for testing
 
 import Foundation
+import ZoniCore
 
 // MARK: - MockEmbedding
 

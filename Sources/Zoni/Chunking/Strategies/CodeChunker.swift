@@ -3,6 +3,7 @@
 // Code-aware chunking strategy for splitting source code at function boundaries.
 
 import Foundation
+import ZoniCore
 
 // MARK: - CodeChunker
 

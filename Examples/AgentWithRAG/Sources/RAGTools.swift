@@ -4,6 +4,7 @@
 
 import Zoni
 import ZoniAgents
+import Foundation
 
 // MARK: - SearchKnowledgeBaseTool
 

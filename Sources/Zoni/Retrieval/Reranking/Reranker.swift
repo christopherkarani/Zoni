@@ -3,6 +3,7 @@
 // Reranker.swift - Protocol for reranking retrieval results
 
 import Foundation
+import ZoniCore
 
 // MARK: - Reranker
 

@@ -3,6 +3,7 @@
 // RAGPipeline+Factory.swift - Convenience factory methods for RAGPipeline
 
 import Foundation
+import ZoniCore
 
 // MARK: - Factory Methods
 
@@ -50,8 +51,8 @@ extension RAGPipeline {
     /// - Returns: A configured `RAGPipeline` instance ready for use.
     ///
     /// - Note: Data stored in the in-memory vector store is not persisted and
-    ///   will be lost when the pipeline is deallocated. Use `SQLiteVectorStore`
-    ///   or `PgVectorStore` for persistent storage.
+    ///   will be lost when the pipeline is deallocated. Use optional integration
+    ///   packages such as `ZoniSQLite` or `ZoniServerPostgres` for persistent storage.
     public static func inMemory(
         embedding: any EmbeddingProvider,
         llm: any LLMProvider,

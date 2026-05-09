@@ -3,6 +3,7 @@
 // RateLimiter.swift - Token bucket rate limiting for API requests
 
 import Foundation
+import ZoniCore
 
 // MARK: - RateLimiter
 
@@ -153,6 +154,15 @@ extension RateLimiter {
     ///
     /// - Returns: A rate limiter configured for Voyage AI.
     public static func forVoyage() -> RateLimiter {
+        RateLimiter(tokensPerSecond: 20, bucketSize: 50)
+    }
+
+    /// Creates a rate limiter configured for Mistral AI API limits.
+    ///
+    /// Mistral has moderate rate limits similar to other embedding providers.
+    ///
+    /// - Returns: A rate limiter configured for Mistral AI.
+    public static func forMistral() -> RateLimiter {
         RateLimiter(tokensPerSecond: 20, bucketSize: 50)
     }
 

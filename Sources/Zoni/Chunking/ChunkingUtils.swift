@@ -3,6 +3,7 @@
 // Utility functions for working with chunks in RAG pipelines.
 
 import Foundation
+import ZoniCore
 
 // MARK: - ChunkStatistics
 

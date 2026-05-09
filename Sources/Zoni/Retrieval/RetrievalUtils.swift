@@ -3,6 +3,7 @@
 // RetrievalUtils.swift - Shared utilities for retrieval operations
 
 import Foundation
+import ZoniCore
 
 // MARK: - RetrievalUtils
 

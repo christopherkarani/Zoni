@@ -261,11 +261,14 @@ struct DocumentPickerView: View {
 
 enum DocumentPickerError: LocalizedError {
     case pdfLoadFailed
+    case cancelled
 
     var errorDescription: String? {
         switch self {
         case .pdfLoadFailed:
             return "Failed to load the PDF document."
+        case .cancelled:
+            return "Document selection was cancelled."
         }
     }
 }

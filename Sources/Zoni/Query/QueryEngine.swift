@@ -2,6 +2,8 @@
 //
 // QueryEngine.swift - Main orchestrator for RAG query operations.
 
+import ZoniCore
+
 // MARK: - QueryEngine
 
 /// The main orchestrator for Retrieval-Augmented Generation (RAG) queries.

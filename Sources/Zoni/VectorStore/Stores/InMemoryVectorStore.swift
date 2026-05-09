@@ -3,6 +3,7 @@
 // InMemoryVectorStore.swift - An in-memory vector store for testing and small datasets.
 
 import Foundation
+import ZoniCore
 
 // MARK: - InMemoryVectorStore
 

@@ -3,6 +3,7 @@
 // RAGSummarizeTool.swift - Topic summarization tool for knowledge base.
 
 import Foundation
+import ZoniCore
 
 // MARK: - RAGSummarizeTool
 

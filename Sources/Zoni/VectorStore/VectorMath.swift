@@ -3,6 +3,7 @@
 // SIMD-optimized vector math operations using Apple's Accelerate framework.
 
 import Accelerate
+import ZoniCore
 
 // MARK: - VectorMath
 

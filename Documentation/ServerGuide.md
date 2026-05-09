@@ -2,11 +2,9 @@
 
 ## Overview
 
-Zoni provides first-class support for server-side Swift deployments with production-ready integrations for the two leading server frameworks:
+Zoni provides server-side Swift building blocks without coupling the root package to a web framework:
 
 - **ZoniServer** - Core server-side abstractions including multi-tenancy, job queues, and DTOs
-- **ZoniVapor** - Complete Vapor framework integration with REST endpoints and WebSocket support
-- **ZoniHummingbird** - Hummingbird framework integration with modern async patterns
 
 All server components are built with Swift 6 strict concurrency checking, ensuring thread-safe operations and predictable performance under load.
 
@@ -22,9 +20,18 @@ dependencies: [
 ]
 ```
 
+If you are working from a local checkout and need PostgreSQL/pgvector, add the integration package too:
+
+```swift
+dependencies: [
+    .package(path: "Integrations/ZoniServerPostgres")
+]
+```
+
 ### Target Dependencies
 
-Choose your framework and add the appropriate dependencies:
+Add the Zoni products you need. Web frameworks such as Vapor or Hummingbird should be declared by your app package, not by Zoni.
+PostgreSQL support is provided by the separate `Integrations/ZoniServerPostgres` package.
 
 ```swift
 targets: [
@@ -33,76 +40,63 @@ targets: [
         dependencies: [
             "Zoni",
             "ZoniServer",
-            "ZoniVapor",  // or "ZoniHummingbird"
+            "ZoniServerPostgres", // from Integrations/ZoniServerPostgres
         ]
     )
 ]
 ```
 
-## Vapor Integration
+## Framework Integration
 
 ### Basic Setup
 
-Configure Zoni in your Vapor application's `configure.swift`:
+Create the RAG services in your application startup code, store them in your framework's dependency container, then expose routes that call those services.
 
 ```swift
-import Vapor
 import Zoni
-import ZoniVapor
+import ZoniHTTP
 import ZoniServer
+import ZoniServerPostgres
 
-func configure(_ app: Application) async throws {
-    // 1. Create the query engine with your chosen services
-    let vectorStore = try await PgVectorStore.connect(
-        connectionString: Environment.get("DATABASE_URL")!,
-        configuration: PgVectorStore.Configuration(
-            tableName: "zoni_chunks",
-            dimensions: 1536,
-            indexType: .ivfflat
-        ),
-        eventLoopGroup: app.eventLoopGroup
+// 1. Create the query engine with your chosen services.
+let vectorStore = try await PgVectorStore.connect(
+    connectionString: databaseURL,
+    configuration: PgVectorStore.Configuration(
+        tableName: "zoni_chunks",
+        dimensions: 1536,
+        indexType: .ivfflat
     )
+)
 
-    let embedder = OpenAIEmbedder(
-        apiKey: Environment.get("OPENAI_API_KEY")!,
-        model: .textEmbedding3Small
-    )
+let embedder = OpenAIEmbedding(
+    apiKey: openAIAPIKey,
+    model: .textEmbedding3Small
+)
 
-    let llm = AnthropicLLM(
-        apiKey: Environment.get("ANTHROPIC_API_KEY")!,
-        model: "claude-sonnet-4-20250514"
-    )
+let llm = YourLLMProvider()
 
-    let queryEngine = QueryEngine(
-        vectorStore: vectorStore,
-        embedder: embedder,
-        llm: llm
-    )
+let retriever = VectorRetriever(
+    vectorStore: vectorStore,
+    embeddingProvider: embedder
+)
 
-    // 2. Setup multi-tenancy (optional)
-    let tenantManager = TenantManager(
-        storage: PostgresTenantStorage(connectionString: Environment.get("DATABASE_URL")!)
-    )
+let queryEngine = QueryEngine(
+    retriever: retriever,
+    llmProvider: llm
+)
 
-    // 3. Create Zoni configuration
-    let zoniConfig = ZoniVaporConfiguration(
-        queryEngine: queryEngine,
-        tenantManager: tenantManager,
-        rateLimiter: TenantRateLimiter(),
-        jobQueue: InMemoryJobQueue()
-    )
+// 2. Setup multi-tenancy and background jobs if your server needs them.
+let tenantManager = TenantManager(storage: tenantStorage)
+let rateLimiter = TenantRateLimiter()
+let jobQueue = InMemoryJobQueue()
 
-    // 4. Configure Zoni services
-    app.configureZoni(zoniConfig)
-
-    // 5. Register RAG routes
-    try app.registerZoniRoutes()
-}
+// 3. Store these values in your app/framework dependency container and call
+// them from HTTP handlers. See Examples/ServerRAG for a Vapor implementation.
 ```
 
 ### Available Endpoints
 
-After registration, the following REST endpoints are available at `/api/v1`:
+The server DTOs in `ZoniServer` are framework-agnostic. A typical API exposes these endpoints at `/api/v1`:
 
 #### Query Endpoints
 
@@ -202,56 +196,6 @@ curl -X POST http://localhost:8080/api/v1/documents \
     }
   }'
 ```
-
-## Hummingbird Integration
-
-### Basic Setup
-
-```swift
-import Hummingbird
-import HummingbirdAuth
-import Zoni
-import ZoniHummingbird
-import ZoniServer
-
-@main
-struct App {
-    static func main() async throws {
-        // 1. Create services (same as Vapor example)
-        let queryEngine = QueryEngine(...)
-        let tenantManager = TenantManager(...)
-
-        let services = ZoniServices(
-            queryEngine: queryEngine,
-            tenantManager: tenantManager,
-            rateLimiter: TenantRateLimiter(),
-            jobQueue: InMemoryJobQueue()
-        )
-
-        // 2. Create router with RAG context
-        let router = Router(context: RAGRequestContext.self)
-
-        // 3. Add all Zoni routes
-        addZoniRoutes(to: router, services: services)
-
-        // 4. Create and run application
-        let app = Application(
-            router: router,
-            configuration: .init(address: .hostname("0.0.0.0", port: 8080))
-        )
-
-        try await app.runService()
-    }
-}
-```
-
-### Middleware Stack
-
-Hummingbird integration includes:
-
-- **TenantMiddleware** - Resolves tenant context from Authorization header
-- **RateLimitMiddleware** - Per-tenant rate limiting with token bucket algorithm
-- **ErrorMiddleware** - Standardized error responses
 
 ## PostgreSQL with pgvector
 
@@ -467,26 +411,21 @@ Response:
 
 ## WebSocket Streaming
 
-### Vapor WebSocket Setup
+### Server WebSocket Setup
 
 ```swift
-import Vapor
+let request = try JSONDecoder().decode(QueryRequest.self, from: messageData)
 
-app.webSocket("ws", "rag", "stream") { req, ws in
-    ws.onText { ws, text in
-        let request = try JSONDecoder().decode(QueryRequest.self, from: Data(text.utf8))
+let events = queryEngine.streamQuery(
+    request.query,
+    options: request.toQueryOptions()
+)
 
-        // Stream query events
-        let events = try await app.zoni.queryEngine.streamQuery(
-            request.query,
-            options: request.toQueryOptions()
-        )
-
-        for try await event in events {
-            let dto = StreamEventDTO.from(event)
-            let data = try JSONEncoder().encode(dto)
-            try await ws.send(String(data: data, encoding: .utf8)!)
-        }
+for try await event in events {
+    let dto = StreamEventDTO.from(event)
+    let data = try JSONEncoder().encode(dto)
+    if let text = String(data: data, encoding: .utf8) {
+        try await webSocketSend(text)
     }
 }
 ```
@@ -863,7 +802,5 @@ print("Used: \(usage.used) / \(usage.limit)")
 
 ## Additional Resources
 
-- [Vapor Documentation](https://docs.vapor.codes/)
-- [Hummingbird Documentation](https://docs.hummingbird.codes/)
 - [pgvector GitHub](https://github.com/pgvector/pgvector)
 - [PostgreSQL Performance Tuning](https://wiki.postgresql.org/wiki/Performance_Optimization)

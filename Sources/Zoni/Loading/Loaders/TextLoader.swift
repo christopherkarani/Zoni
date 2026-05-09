@@ -3,6 +3,7 @@
 // TextLoader.swift - Loader for plain text documents
 
 import Foundation
+import ZoniCore
 
 /// A document loader for plain text files.
 ///
@@ -76,6 +77,9 @@ public struct TextLoader: DocumentLoader, Sendable {
         guard let content = String(data: processedData, encoding: encoding) else {
             throw ZoniError.invalidData(reason: "Unable to decode text with detected encoding")
         }
+        guard content.isLikelyText else {
+            throw ZoniError.invalidData(reason: "Decoded content contains binary control characters")
+        }
 
         var finalMetadata = metadata ?? DocumentMetadata()
         if finalMetadata.mimeType == nil {
@@ -83,5 +87,15 @@ public struct TextLoader: DocumentLoader, Sendable {
         }
 
         return Document(content: content, metadata: finalMetadata)
+    }
+}
+
+private extension String {
+    var isLikelyText: Bool {
+        !unicodeScalars.contains { scalar in
+            let value = scalar.value
+            return (value < 0x20 && value != 0x09 && value != 0x0A && value != 0x0D)
+                || (value >= 0x7F && value <= 0x9F)
+        }
     }
 }

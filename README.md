@@ -2,22 +2,21 @@
 
 **A Retrieval-Augmented Generation framework for Swift**
 
-[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
+[![Swift 6.1](https://img.shields.io/badge/Swift-6.1-orange.svg)](https://swift.org)
 [![Platforms](https://img.shields.io/badge/Platforms-Linux%20%7C%20macOS%2014%2B%20%7C%20iOS%2017%2B-blue.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Zoni is a comprehensive, production-ready RAG framework built with Swift 6.0. It provides everything you need to build intelligent document search, question-answering systems, and AI-powered applications across Linux, macOS, and iOS.
+Zoni is a comprehensive RAG framework built with Swift 6.1. It provides document search, question-answering, and AI application building blocks across Linux, macOS, and iOS.
 
 ## Features
 
-- **Document Loading** - PDF, Markdown, HTML, JSON, CSV, plain text, and web pages
+- **Document Loading** - PDF, Markdown, JSON, CSV, plain text, plus optional HTML and web-page loading
 - **Smart Chunking** - Recursive, semantic, markdown-aware, code-aware, sentence, and paragraph strategies
-- **Multiple Embeddings** - OpenAI, Cohere, Voyage, Ollama, Apple NLEmbedding, MLX, Foundation Models
-- **Vector Stores** - PostgreSQL+pgvector, SQLite, Qdrant, Pinecone, and in-memory storage
+- **Multiple Embeddings** - Mock/local core embeddings, optional OpenAI/Cohere/Voyage/Ollama integrations, Apple NLEmbedding, MLX, Foundation Models
+- **Vector Stores** - In-memory, plus optional Qdrant, Pinecone, PostgreSQL+pgvector, and SQLite integrations
 - **Advanced Retrieval** - Hybrid search, multi-query expansion, MMR diversity, reranking
 - **Query Engine** - Multiple response synthesis strategies (compact, refine, tree-summarize)
 - **Agent Tools** - SwiftAgents-compatible tools for RAG operations
-- **Server Integration** - First-class Vapor and Hummingbird framework support
 - **Multi-Tenancy** - Built-in tenant isolation and job queue system
 - **Apple Native** - On-device ML with Foundation Models, NLEmbedding, MLX, and PDFKit
 - **Swift 6 Concurrency** - Actor-based design with full async/await and Sendable support
@@ -38,12 +37,46 @@ Zoni provides multiple products for different use cases:
 
 | Product | Description | Platforms |
 |---------|-------------|-----------|
+| **ZoniCore** | Lightweight contracts, value types, configuration, errors, and metadata filtering for custom integrations | Linux, macOS, iOS, tvOS, watchOS, visionOS |
 | **Zoni** | Core RAG library with document loading, chunking, embeddings, and vector stores | Linux, macOS, iOS, tvOS, watchOS, visionOS |
 | **ZoniServer** | Multi-tenancy, job queue system, and server-side abstractions | Linux, macOS |
-| **ZoniVapor** | Vapor framework integration with controllers and middleware | Linux, macOS |
-| **ZoniHummingbird** | Hummingbird framework integration with routes and middleware | Linux, macOS |
-| **ZoniApple** | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) | macOS 14+, iOS 17+ |
 | **ZoniAgents** | SwiftAgents integration layer for agentic workflows | Linux, macOS, iOS |
+
+## Optional Integration Packages
+
+Heavier storage and framework integrations live outside the root package so core users do not resolve those dependencies by default:
+
+| Integration | Path | Adds |
+|-------------|------|------|
+| **ZoniServerPostgres** | `Integrations/ZoniServerPostgres` | PostgreSQL/pgvector vector store and RAG pipeline factory |
+| **ZoniSQLite** | `Integrations/ZoniSQLite` | SQLite vector store for embedded persistence |
+| **ZoniSQLiteApple** | `Integrations/ZoniSQLite` | Apple SQLite memory strategies and on-device pipeline factories |
+| **ZoniConduit** | `Integrations/ZoniConduit` | Conduit inference adapter for `LLMProvider` |
+| **ZoniHTTP** | `Integrations/ZoniHTTP` | HTTP embedding providers, HTML/web loaders, Qdrant/Pinecone stores, and Cohere reranking |
+| **ZoniApple** | `Integrations/ZoniApple` | Apple platform extensions (NLEmbedding, MLX, Foundation Models, PDFKit) |
+
+## Build and Test
+
+Use these commands as the local baseline before opening a PR:
+
+```bash
+# Build the package
+swift build
+
+# Run the core test suite without external services
+swift test --filter ZoniTests
+
+# Run integration tests that require local or hosted vector stores
+ZONI_RUN_INTEGRATION_TESTS=1 swift test --filter IntegrationTests
+```
+
+The example projects are standalone Swift packages:
+
+```bash
+(cd Examples/AgentWithRAG && swift build)
+(cd Examples/ServerRAG && swift build)
+(cd Examples/iOSDocumentQA && swift build)
+```
 
 ## Quick Start
 
@@ -56,6 +89,7 @@ Build a simple RAG pipeline for server-side applications:
 
 ```swift
 import Zoni
+import ZoniHTTP
 
 // Create pipeline components
 let embedding = OpenAIEmbedding(
@@ -102,10 +136,11 @@ Build privacy-first, on-device RAG using Apple's frameworks:
 ```swift
 import Zoni
 import ZoniApple
+import ZoniSQLite
 
 // Create on-device pipeline with Apple NaturalLanguage
 let embedding = NLEmbeddingProvider(language: .english)
-let vectorStore = SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
+let vectorStore = try SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
 let chunker = MarkdownChunker(targetChunkSize: 512)
 
 // For iOS 26+ / macOS 26+ with Apple Intelligence:
@@ -139,47 +174,12 @@ for try await event in pipeline.streamQuery("Summarize the key points") {
 }
 ```
 
-### Vapor Server with Multi-Tenancy
-
-Build a production RAG API with Vapor:
-
-```swift
-import Vapor
-import ZoniVapor
-import ZoniServer
-
-func configure(_ app: Application) async throws {
-    // Setup multi-tenant RAG
-    let tenantManager = try await TenantManager(
-        postgres: PostgresConfiguration(
-            host: "localhost",
-            database: "zoni"
-        )
-    )
-
-    app.zoni.tenantManager = tenantManager
-
-    // Register RAG routes with JWT authentication
-    try app.register(collection: ZoniController())
-
-    // Enable streaming support
-    app.middleware.use(StreamingMiddleware())
-}
-
-// Your routes support:
-// POST /api/v1/documents/ingest - Ingest documents
-// POST /api/v1/query - Query knowledge base
-// POST /api/v1/query/stream - Streaming queries
-// GET /api/v1/stats - Pipeline statistics
-```
-
 ## Documentation
 
 - [Getting Started Guide](Documentation/GettingStarted.md) - Detailed setup and basic usage
-- [Server Guide](Documentation/ServerGuide.md) - Building RAG APIs with Vapor/Hummingbird
+- [Server Guide](Documentation/ServerGuide.md) - Building RAG APIs with ZoniServer
 - [Apple Platforms Guide](Documentation/AppleGuide.md) - On-device ML and iOS/macOS integration
-- [Advanced Retrieval](Documentation/AdvancedRetrieval.md) - Hybrid search, reranking, MMR
-- [API Reference](Documentation/API/) - Complete API documentation
+- Advanced retrieval examples are covered in the sections below.
 
 ## Architecture
 
@@ -198,7 +198,7 @@ Zoni follows a modular architecture with clear protocol boundaries:
             │             │             │
     ┌───────▼─────────────▼─────────────▼─────────┐
     │            VectorStore                       │
-    │    (PostgreSQL, SQLite, Qdrant, etc.)       │
+    │      (In-memory, optional integrations)      │
     └───────┬──────────────────────────────────────┘
             │
     ┌───────▼──────┐
@@ -213,6 +213,8 @@ Zoni follows a modular architecture with clear protocol boundaries:
 Load documents from various sources with automatic format detection:
 
 ```swift
+import ZoniHTTP
+
 // Register loaders
 await pipeline.registerLoader(PDFLoader())
 await pipeline.registerLoader(MarkdownLoader())
@@ -237,6 +239,8 @@ Choose the right chunking strategy for your content:
 Multiple embedding options for different needs:
 
 ```swift
+import ZoniHTTP
+
 // Cloud-based (high quality)
 let openai = OpenAIEmbedding(apiKey: "...", model: .textEmbedding3Large)
 let cohere = CohereEmbedding(apiKey: "...", model: .embedEnglishV3)
@@ -257,18 +261,20 @@ let swift = try SwiftEmbeddingsProvider(model: .model2VecBase)  // Ultra-fast
 Flexible storage backends:
 
 ```swift
+import ZoniHTTP
+
 // In-memory (development/testing)
 let memory = InMemoryVectorStore()
 
-// SQLite (single-node, embedded)
-let sqlite = SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
+// SQLite (single-node, embedded; requires import ZoniSQLite)
+let sqlite = try SQLiteVectorStore(url: URL(fileURLWithPath: "vectors.db"))
 
-// PostgreSQL with pgvector (production, multi-tenant)
+// PostgreSQL with pgvector (production, multi-tenant; requires import ZoniServerPostgres)
 let postgres = try await PgVectorStore(
     configuration: PostgresConfiguration(host: "localhost", database: "zoni")
 )
 
-// Managed services
+// Managed services (requires ZoniHTTP)
 let qdrant = QdrantStore(url: "http://localhost:6333", collection: "docs")
 let pinecone = PineconeStore(apiKey: "...", index: "zoni-index")
 ```
@@ -277,6 +283,8 @@ let pinecone = PineconeStore(apiKey: "...", index: "zoni-index")
 Combine multiple retrieval strategies:
 
 ```swift
+import ZoniHTTP
+
 // Hybrid search (keyword + semantic)
 let hybrid = HybridRetriever(
     vectorRetriever: vectorRetriever,
@@ -306,7 +314,7 @@ let reranker = RerankerRetriever(
 
 ## Requirements
 
-- **Swift 6.0+** (Swift 6 language mode enabled)
+- **Swift 6.1+** (Swift 6 language mode enabled)
 - **Platforms:**
   - Linux (Ubuntu 20.04+)
   - macOS 14.0+
@@ -325,8 +333,7 @@ Check out the [Examples](Examples/) directory for complete sample projects:
 
 - **CLI RAG Tool** - Command-line document search
 - **iOS Knowledge Base** - SwiftUI app with on-device RAG
-- **Vapor API Server** - Multi-tenant RAG API
-- **Hummingbird Microservice** - Lightweight RAG service
+- **Server RAG API** - Multi-tenant RAG API
 - **Agent Workflows** - Using ZoniAgents for complex workflows
 
 ## Testing
@@ -334,13 +341,17 @@ Check out the [Examples](Examples/) directory for complete sample projects:
 Zoni includes comprehensive test coverage:
 
 ```bash
-# Run all tests
-swift test
-
-# Run specific test suite
+# Run core tests that do not require external services
 swift test --filter ZoniTests
+
+# Run specific root product suites
 swift test --filter ZoniServerTests
-swift test --filter ZoniAppleTests
+
+# Run Apple integration tests
+(cd Integrations/ZoniApple && swift test --filter ZoniAppleTests)
+
+# Run integration tests that require Qdrant/Pinecone configuration
+ZONI_RUN_INTEGRATION_TESTS=1 swift test --filter IntegrationTests
 
 # Run with coverage (macOS/Linux)
 swift test --enable-code-coverage
@@ -365,15 +376,12 @@ Zoni is released under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-Built with Swift 6.0 and powered by:
-- [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing
-- [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking
-- [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface
-- [PostgresNIO](https://github.com/vapor/postgres-nio) - PostgreSQL driver
-- [Vapor](https://github.com/vapor/vapor) - Web framework
-- [Hummingbird](https://github.com/hummingbird-project/hummingbird) - Swift HTTP server
-- [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML
-- [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec
+Built with Swift 6.1 and powered by:
+- [SwiftSoup](https://github.com/scinfu/SwiftSoup) - HTML parsing in the optional `ZoniHTTP` package
+- [AsyncHTTPClient](https://github.com/swift-server/async-http-client) - HTTP networking in the optional `ZoniHTTP` package
+- [SQLite.swift](https://github.com/stephencelis/SQLite.swift) - SQLite interface for the optional `ZoniSQLite` package
+- [MLX Swift](https://github.com/ml-explore/mlx-swift) - GPU-accelerated ML in the optional `ZoniApple` package
+- [swift-embeddings](https://github.com/jkrukowski/swift-embeddings) - Fast Model2Vec in the optional `ZoniApple` package
 
 ---
 

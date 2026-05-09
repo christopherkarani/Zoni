@@ -3,6 +3,7 @@
 // RerankerRetriever.swift - Retriever with cross-encoder reranking
 
 import Foundation
+import ZoniCore
 
 // MARK: - RerankerRetriever
 

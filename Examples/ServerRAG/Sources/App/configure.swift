@@ -7,8 +7,6 @@
 
 import Vapor
 import Zoni
-import ZoniServer
-import ZoniVapor
 
 // MARK: - Application Configuration
 
@@ -18,7 +16,6 @@ import ZoniVapor
 /// - Mock embedding provider (no API key required)
 /// - In-memory vector store (data resets on restart)
 /// - Mock LLM provider (returns placeholder responses)
-/// - Basic tenant management (allows any API key)
 ///
 /// - Parameter app: The Vapor application to configure.
 func configure(_ app: Application) async throws {
@@ -39,22 +36,8 @@ func configure(_ app: Application) async throws {
         llmProvider: llmProvider
     )
 
-    // Create mock tenant manager (accepts any API key)
-    let tenantManager = TenantManager(
-        storage: MockTenantStorage()
-    )
-
-    // Configure ZoniVapor
-    let config = ZoniVaporConfiguration(
-        queryEngine: queryEngine,
-        tenantManager: tenantManager,
-        rateLimiter: TenantRateLimiter(),
-        jobQueue: InMemoryJobQueue()
-    )
-
-    app.configureZoni(config)
-
-    // Store components for direct access in routes
+    // Store components for direct access in routes.
+    app.storage[QueryEngineKey.self] = queryEngine
     app.storage[VectorStoreKey.self] = vectorStore
     app.storage[EmbeddingProviderKey.self] = embeddingProvider
     app.storage[ChunkerKey.self] = ParagraphChunker()
@@ -67,6 +50,11 @@ func configure(_ app: Application) async throws {
 }
 
 // MARK: - Storage Keys
+
+/// Storage key for the query engine.
+struct QueryEngineKey: StorageKey {
+    typealias Value = QueryEngine
+}
 
 /// Storage key for the vector store.
 struct VectorStoreKey: StorageKey {
@@ -86,6 +74,14 @@ struct ChunkerKey: StorageKey {
 // MARK: - Application Extensions
 
 extension Application {
+    /// The query engine for answering RAG queries.
+    var queryEngine: QueryEngine {
+        guard let engine = storage[QueryEngineKey.self] else {
+            fatalError("QueryEngine not configured")
+        }
+        return engine
+    }
+
     /// The vector store for direct access in routes.
     var vectorStore: InMemoryVectorStore {
         guard let store = storage[VectorStoreKey.self] else {
@@ -117,10 +113,10 @@ extension Application {
 ///
 /// This provider generates responses based on the context provided,
 /// making it useful for testing without API keys.
-actor MockLLMProvider: LLMProvider {
-    nonisolated let name = "mock"
-    nonisolated let model = "mock-llm-v1"
-    nonisolated let maxContextTokens = 4096
+struct MockLLMProvider: LLMProvider, Sendable {
+    let name = "mock"
+    let model = "mock-llm-v1"
+    let maxContextTokens = 4096
 
     func generate(
         prompt: String,
@@ -165,59 +161,5 @@ actor MockLLMProvider: LLMProvider {
                 continuation.finish()
             }
         }
-    }
-}
-
-// MARK: - Mock Tenant Storage
-
-/// A mock tenant storage that creates tenants on-the-fly.
-///
-/// This storage accepts any API key and creates a default tenant,
-/// useful for testing without a real database.
-actor MockTenantStorage: TenantStorage {
-    private var tenants: [String: TenantContext] = [:]
-    private var apiKeyMappings: [String: String] = [:]
-
-    func find(tenantId: String) async throws -> TenantContext? {
-        if let existing = tenants[tenantId] {
-            return existing
-        }
-
-        // Create a default tenant on first access
-        let context = TenantContext(
-            tenantId: tenantId,
-            tier: .standard,
-            config: TenantConfiguration.forTier(.standard)
-        )
-        tenants[tenantId] = context
-        return context
-    }
-
-    func findByApiKey(_ apiKey: String) async throws -> TenantContext? {
-        // Check if we have a mapping for this API key
-        if let tenantId = apiKeyMappings[apiKey] {
-            return try await find(tenantId: tenantId)
-        }
-
-        // Create a new tenant for any API key
-        let tenantId = "tenant_\(apiKey.prefix(8))"
-        apiKeyMappings[apiKey] = tenantId
-
-        let context = TenantContext(
-            tenantId: tenantId,
-            tier: .standard,
-            config: TenantConfiguration.forTier(.standard)
-        )
-        tenants[tenantId] = context
-        return context
-    }
-
-    func save(_ tenant: TenantContext) async throws {
-        tenants[tenant.tenantId] = tenant
-    }
-
-    func delete(tenantId: String) async throws {
-        tenants.removeValue(forKey: tenantId)
-        apiKeyMappings = apiKeyMappings.filter { $0.value != tenantId }
     }
 }

@@ -874,21 +874,6 @@ public struct QueryResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
-import Hummingbird
-import NIOCore
-
-extension QueryResponse: ResponseGenerator {
-    public func response(from request: Request, context: some RequestContext) throws -> Response {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(self)
-        var buffer = ByteBuffer()
-        buffer.writeBytes(data)
-        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: buffer))
-    }
-}
-#endif
 
 // MARK: - Ingest DTOs
 
@@ -1115,19 +1100,6 @@ public struct IngestResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
-extension IngestResponse: ResponseGenerator {
-    public func response(from request: Request, context: some RequestContext) throws -> Response {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(self)
-        var buffer = ByteBuffer()
-        buffer.writeBytes(data)
-        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: buffer))
-    }
-}
-#endif
-
 // MARK: - Index DTOs
 
 /// A request to create a new vector index.
@@ -1351,19 +1323,6 @@ public struct JobStatusResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
-extension JobStatusResponse: ResponseGenerator {
-    public func response(from request: Request, context: some RequestContext) throws -> Response {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(self)
-        var buffer = ByteBuffer()
-        buffer.writeBytes(data)
-        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: buffer))
-    }
-}
-#endif
-
 // MARK: - Health DTOs
 
 /// The health status response from the server.
@@ -1401,19 +1360,6 @@ public struct HealthResponse: Codable, Sendable, Equatable {
     }
 }
 
-#if canImport(Hummingbird)
-extension HealthResponse: ResponseGenerator {
-    public func response(from request: Request, context: some RequestContext) throws -> Response {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(self)
-        var buffer = ByteBuffer()
-        buffer.writeBytes(data)
-        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: buffer))
-    }
-}
-#endif
-
 /// The readiness status response from the server.
 ///
 /// Readiness indicates whether the server is ready to accept traffic.
@@ -1447,19 +1393,6 @@ public struct ReadinessResponse: Codable, Sendable, Equatable {
         self.checks = checks
     }
 }
-
-#if canImport(Hummingbird)
-extension ReadinessResponse: ResponseGenerator {
-    public func response(from request: Request, context: some RequestContext) throws -> Response {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(self)
-        var buffer = ByteBuffer()
-        buffer.writeBytes(data)
-        return Response(status: .ok, headers: [.contentType: "application/json"], body: .init(byteBuffer: buffer))
-    }
-}
-#endif
 
 // MARK: - Streaming DTOs
 

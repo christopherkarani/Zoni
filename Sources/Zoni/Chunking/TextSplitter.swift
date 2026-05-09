@@ -3,6 +3,7 @@
 // Core text splitting utilities for chunking text into meaningful segments.
 
 import Foundation
+import ZoniCore
 
 // MARK: - TextSplitter
 

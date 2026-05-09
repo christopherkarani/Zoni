@@ -3,6 +3,7 @@
 // HybridRetriever.swift - Hybrid vector + keyword retrieval strategy
 
 import Foundation
+import ZoniCore
 
 // MARK: - HybridRetriever
 

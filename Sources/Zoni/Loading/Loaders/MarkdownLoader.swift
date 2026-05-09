@@ -3,6 +3,7 @@
 // MarkdownLoader.swift - Loader for Markdown documents with frontmatter support
 
 import Foundation
+import ZoniCore
 
 /// A document loader for Markdown files with YAML frontmatter support.
 ///
@@ -128,7 +129,8 @@ public struct MarkdownLoader: DocumentLoader, Sendable {
 
         for i in 1..<lines.count {
             let line = lines[i]
-            if line.trimmingCharacters(in: .whitespaces) == "---" {
+            let delimiter = line.trimmingCharacters(in: .whitespaces)
+            if delimiter == "---" || delimiter == "..." {
                 endIndex = i
                 break
             }
@@ -140,17 +142,50 @@ public struct MarkdownLoader: DocumentLoader, Sendable {
             return ([:], content)
         }
 
-        // Parse simple YAML key: value pairs
+        // Parse simple YAML key: value pairs, including quoted multiline values.
         var frontmatter: [String: String] = [:]
+        var currentKey: String?
+        var currentValue: String?
+        var isCollectingQuotedValue = false
+
+        func finishCurrentValue() {
+            guard let key = currentKey, let value = currentValue else { return }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !key.isEmpty && !trimmed.isEmpty {
+                frontmatter[key] = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            }
+            currentKey = nil
+            currentValue = nil
+            isCollectingQuotedValue = false
+        }
+
         for line in frontmatterLines {
+            if isCollectingQuotedValue {
+                currentValue = [currentValue, line.trimmingCharacters(in: .whitespaces)]
+                    .compactMap { $0 }
+                    .joined(separator: "\n")
+                if line.trimmingCharacters(in: .whitespaces).hasSuffix("\"") {
+                    finishCurrentValue()
+                }
+                continue
+            }
+
             if let colonIndex = line.firstIndex(of: ":") {
+                finishCurrentValue()
                 let key = String(line[..<colonIndex]).trimmingCharacters(in: .whitespaces)
                 let value = String(line[line.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
                 if !key.isEmpty && !value.isEmpty {
-                    frontmatter[key] = value
+                    currentKey = key
+                    currentValue = value
+                    if value.hasPrefix("\"") && !value.hasSuffix("\"") {
+                        isCollectingQuotedValue = true
+                    } else {
+                        finishCurrentValue()
+                    }
                 }
             }
         }
+        finishCurrentValue()
 
         // Reconstruct body (skip frontmatter lines)
         let bodyLines = Array(lines.dropFirst(endIndex + 1))

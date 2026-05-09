@@ -18,19 +18,22 @@ Add Zoni to your Swift package dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/christopherkarani/zoni", from: "1.0.0")
+    .package(url: "https://github.com/christopherkarani/zoni", from: "1.0.0"),
+    .package(path: "Integrations/ZoniApple")
 ]
 
 targets: [
     .target(
         name: "MyApp",
         dependencies: [
-            "Zoni",
-            "ZoniApple"
+            .product(name: "Zoni", package: "zoni"),
+            .product(name: "ZoniApple", package: "ZoniApple")
         ]
     )
 ]
 ```
+
+`ZoniApple` lives in `Integrations/ZoniApple` so default server/core users do not resolve MLX or swift-embeddings.
 
 ## Privacy-First RAG
 
@@ -39,6 +42,7 @@ All processing happens on-device - no data leaves the user's device.
 ```swift
 import Zoni
 import ZoniApple
+import ZoniSQLite
 
 // Completely on-device pipeline
 let embedding = try NLEmbeddingProvider.english()
@@ -240,6 +244,7 @@ Persistent vector storage using SQLite with memory optimization strategies.
 
 ```swift
 import ZoniApple
+import ZoniSQLite
 
 let vectorStore = try SQLiteVectorStore(
     path: documentsURL.appendingPathComponent("vectors.db")
@@ -344,6 +349,7 @@ let loaded = try await InMemoryVectorStore.import(from: persistenceURL)
 import SwiftUI
 import Zoni
 import ZoniApple
+import ZoniSQLite
 
 @Observable
 class RAGViewModel {
@@ -491,7 +497,7 @@ do {
 | SwiftEmbeddings | 18.0+ | 15.0+ | 18.0+ | 11.0+ | 2.0+ |
 | MLX | 17.0+ (arm64) | 14.0+ (arm64) | - | - | - |
 | Foundation Models | 26.0+ | 26.0+ | - | - | - |
-| SQLite Vector Store | 17.0+ | 14.0+ | 17.0+ | 10.0+ | 1.0+ |
+| SQLite Vector Store (`ZoniSQLite`) | 17.0+ | 14.0+ | 17.0+ | 10.0+ | 1.0+ |
 
 ## Performance Tips
 
@@ -519,6 +525,9 @@ for batch in texts.chunked(into: 50) {
 ### 3. Use Appropriate Memory Strategies
 
 ```swift
+import ZoniSQLite
+import ZoniSQLiteApple
+
 // For 100k vectors, use streaming to minimize memory
 let bigStore = try SQLiteVectorStore(path: bigDBPath)
 let strategy = StreamingMemoryStrategy(batchSize: 1000)

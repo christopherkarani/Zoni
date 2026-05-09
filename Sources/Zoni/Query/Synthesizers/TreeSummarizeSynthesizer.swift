@@ -2,6 +2,8 @@
 //
 // TreeSummarizeSynthesizer.swift - Hierarchical tree summarization synthesis.
 
+import ZoniCore
+
 // MARK: - TreeSummarizeSynthesizer
 
 /// A response synthesizer that uses hierarchical tree summarization for large context sets.

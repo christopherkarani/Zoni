@@ -3,6 +3,7 @@
 // RAGPipeline.swift - The main RAG pipeline orchestrator.
 
 import Foundation
+import ZoniCore
 
 // MARK: - RAGPipeline
 

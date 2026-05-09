@@ -5,6 +5,7 @@
 // Adapted from VecturaKit (MIT License)
 
 import Foundation
+import ZoniCore
 
 // MARK: - Concurrent Collection Processing
 

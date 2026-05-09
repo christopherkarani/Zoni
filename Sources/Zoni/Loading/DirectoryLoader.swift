@@ -3,6 +3,7 @@
 // DirectoryLoader.swift - Recursive directory loading
 
 import Foundation
+import ZoniCore
 
 /// Actor-based loader for loading all documents from a directory.
 ///
@@ -263,8 +264,8 @@ public actor DirectoryLoader {
                     return true
                 }
             } else {
-                // Exact match on filename or directory name
-                if filename == pattern || pathComponents.contains(pattern) {
+                // Match directory names exactly, and filenames by substring for simple filters.
+                if filename.contains(pattern) || pathComponents.contains(pattern) {
                     return true
                 }
             }

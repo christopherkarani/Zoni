@@ -2,6 +2,8 @@
 //
 // CompactSynthesizer.swift - Simple single-prompt response synthesis.
 
+import ZoniCore
+
 // MARK: - CompactSynthesizer
 
 /// A response synthesizer that uses a single compact prompt for generation.

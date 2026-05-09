@@ -6,8 +6,6 @@
 
 import Vapor
 import Zoni
-import ZoniServer
-import ZoniVapor
 
 // MARK: - Routes Registration
 
@@ -240,7 +238,7 @@ func executeQuery(req: Request) async throws -> QueryResponseBody {
         throw Abort(.badRequest, reason: "Query cannot be empty")
     }
 
-    let queryEngine = req.application.zoni.queryEngine
+    let queryEngine = req.application.queryEngine
     let retrievalLimit = body.retrievalLimit ?? 5
 
     // Clamp retrieval limit to reasonable bounds

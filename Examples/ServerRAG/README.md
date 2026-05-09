@@ -7,8 +7,6 @@ A complete Vapor-based RAG server example using Zoni.
 This example demonstrates how to build a production-ready RAG (Retrieval-Augmented Generation) server using:
 
 - **Zoni** - Core RAG framework
-- **ZoniServer** - Server-side extensions with multi-tenancy support
-- **ZoniVapor** - Vapor framework integration
 - **Vapor** - Swift web framework
 
 The example uses mock providers (no API keys required) for easy local testing. In production, replace them with real providers.
@@ -186,6 +184,7 @@ Replace the mock providers in `configure.swift`:
 
 ```swift
 import OpenAI  // Add OpenAI Swift SDK
+import ZoniHTTP
 
 // Replace MockEmbedding with OpenAI embeddings
 let embeddingProvider = OpenAIEmbedding(
@@ -205,7 +204,7 @@ let llmProvider = OpenAILLMProvider(
 Replace InMemoryVectorStore for production:
 
 ```swift
-// Option 1: SQLite for single-server deployments
+// Option 1: SQLite for single-server deployments (requires Integrations/ZoniSQLite)
 let vectorStore = try SQLiteVectorStore(
     path: "./data/vectors.db"
 )
@@ -215,7 +214,9 @@ let vectorStore = try await PgVectorStore(
     connectionString: Environment.get("DATABASE_URL")!
 )
 
-// Option 3: Pinecone for managed vector search
+// Option 3: Pinecone for managed vector search (requires ZoniHTTP)
+import ZoniHTTP
+
 let vectorStore = PineconeStore(
     apiKey: Environment.get("PINECONE_API_KEY")!,
     indexName: "my-index"
@@ -224,17 +225,11 @@ let vectorStore = PineconeStore(
 
 ### Adding Authentication
 
-The ZoniVapor configuration already includes tenant management. For production:
+For production, add Vapor middleware around the routes that should require authentication:
 
 ```swift
-// Use a real tenant storage backend
-let tenantManager = TenantManager(
-    storage: PostgresTenantStorage(database: db),
-    jwtSecret: Environment.get("JWT_SECRET")
-)
-
-// Apply middleware to protected routes
-app.grouped(TenantMiddleware()) { protected in
+let protected = app.grouped(MyAuthenticationMiddleware())
+protected.grouped("api") { protected in
     protected.post("query", use: executeQuery)
     protected.post("ingest", use: ingestDocuments)
 }
@@ -248,7 +243,7 @@ Examples/ServerRAG/
 ├── README.md              # This file
 └── Sources/
     └── App/
-        ├── main.swift     # Application entry point
+        ├── ServerRAGApp.swift # Application entry point
         ├── configure.swift # Zoni and Vapor configuration
         └── routes.swift    # HTTP endpoint definitions
 ```
@@ -264,7 +259,7 @@ Environment variables:
 
 ## Notes
 
-- **Data Persistence**: The in-memory vector store loses data on restart. Use SQLite or a database-backed store for persistence.
+- **Data Persistence**: The in-memory vector store loses data on restart. Use the optional SQLite or database-backed integrations for persistence.
 - **Mock Responses**: The mock LLM provider returns placeholder text. Configure a real provider for actual generation.
 - **Rate Limiting**: The example includes rate limiting infrastructure. Configure per-tenant limits via `TenantConfiguration`.
 - **Chunking**: Documents are split using `ParagraphChunker`. Adjust chunking strategy based on your content type.

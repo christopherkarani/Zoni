@@ -3,6 +3,7 @@
 // KeywordRetriever.swift - BM25 keyword retrieval strategy
 
 import Foundation
+import ZoniCore
 
 // MARK: - KeywordRetriever
 

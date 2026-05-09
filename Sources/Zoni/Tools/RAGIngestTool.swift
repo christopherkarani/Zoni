@@ -3,6 +3,7 @@
 // RAGIngestTool.swift - Document ingestion tool for adding to the knowledge base.
 
 import Foundation
+import ZoniCore
 
 // MARK: - RAGIngestTool
 

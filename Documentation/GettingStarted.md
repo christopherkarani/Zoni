@@ -43,14 +43,14 @@ Document → Chunking → Embedding → Vector Store → Retrieval → LLM Gener
 1. **Documents** - Text content with metadata
 2. **Chunks** - Smaller pieces for semantic search (default: 512 tokens with 50-token overlap)
 3. **Embeddings** - Vector representations of text chunks
-4. **Vector Store** - Database for similarity search (InMemory, SQLite, PostgreSQL)
+4. **Vector Store** - Database for similarity search (InMemory, optional Qdrant/Pinecone/SQLite/PostgreSQL integrations)
 5. **Retrieval** - Finding relevant chunks based on semantic similarity
 6. **Generation** - LLM generates answers using retrieved context
 
 ### Key Components
 
-- **EmbeddingProvider** - Generates vector embeddings (OpenAI, Cohere, MLX, Model2Vec)
-- **VectorStore** - Stores and searches embeddings (InMemory, SQLite, pgvector)
+- **EmbeddingProvider** - Generates vector embeddings (core mocks/local providers, optional OpenAI/Cohere, MLX, Model2Vec)
+- **VectorStore** - Stores and searches embeddings (InMemory, optional Qdrant/Pinecone/SQLite/pgvector integrations)
 - **ChunkingStrategy** - Splits documents into chunks (Fixed, Recursive, Semantic)
 - **DocumentLoader** - Loads various file formats (TXT, MD, HTML, JSON, CSV, PDF)
 - **LLMProvider** - Generates responses (OpenAI, Anthropic, custom)
@@ -62,6 +62,7 @@ Document → Chunking → Embedding → Vector Store → Retrieval → LLM Gener
 
 ```swift
 import Zoni
+import ZoniHTTP
 
 // 1. Create components
 let embedding = try OpenAIEmbedding(
@@ -103,6 +104,8 @@ for source in response.sources {
 ### From Files
 
 ```swift
+import ZoniHTTP
+
 // Register document loaders
 await pipeline.registerLoader(TextLoader())
 await pipeline.registerLoader(MarkdownLoader())
@@ -123,7 +126,7 @@ try await pipeline.ingest(
 
 - `.txt`, `.text` - Plain text (TextLoader)
 - `.md`, `.markdown` - Markdown (MarkdownLoader)
-- `.html`, `.htm` - HTML (HTMLLoader)
+- `.html`, `.htm` - HTML (HTMLLoader from optional `ZoniHTTP`)
 - `.json` - JSON (JSONLoader)
 - `.csv`, `.tsv` - CSV/TSV (CSVLoader)
 - `.pdf` - PDF documents (PDFLoader)
@@ -278,10 +281,14 @@ let vectorStore = InMemoryVectorStore()
 Persistent storage for single-user applications:
 
 ```swift
+import ZoniSQLite
+
 let vectorStore = try SQLiteVectorStore(
     path: "/path/to/database.sqlite"
 )
 ```
+
+SQLite support lives in the optional `Integrations/ZoniSQLite` package so the default `Zoni` package does not resolve `SQLite.swift`.
 
 ### PostgreSQL Store (with pgvector)
 
@@ -303,6 +310,8 @@ let vectorStore = try await PostgresVectorStore(
 ### OpenAI Embeddings
 
 ```swift
+import ZoniHTTP
+
 let embedding = try OpenAIEmbedding(
     apiKey: ProcessInfo.processInfo.environment["OPENAI_API_KEY"]!,
     model: "text-embedding-3-small"  // 1536 dimensions
@@ -312,6 +321,8 @@ let embedding = try OpenAIEmbedding(
 ### Cohere Embeddings
 
 ```swift
+import ZoniHTTP
+
 let embedding = try CohereEmbedding(
     apiKey: ProcessInfo.processInfo.environment["COHERE_API_KEY"]!,
     model: "embed-english-v3.0"
@@ -480,7 +491,7 @@ do {
 
 ## Next Steps
 
-- **[Server Deployment Guide](ServerGuide.md)** - Deploy Zoni as a server with Vapor or Hummingbird
+- **[Server Deployment Guide](ServerGuide.md)** - Deploy Zoni with your server framework
 - **[Apple Platforms Guide](AppleGuide.md)** - Use Zoni in iOS, macOS, and visionOS apps
 - **[Advanced Topics](Advanced.md)** - Custom retrievers, query engines, and synthesis strategies
 

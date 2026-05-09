@@ -3,6 +3,7 @@
 // Markdown-aware chunking strategy for splitting documents at section boundaries.
 
 import Foundation
+import ZoniCore
 
 // MARK: - MarkdownChunker
 

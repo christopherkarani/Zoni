@@ -3,6 +3,7 @@
 // MultiIndexTool.swift - Multi-index search tool for cross-knowledge-base queries.
 
 import Foundation
+import ZoniCore
 
 // MARK: - MultiIndexTool
 

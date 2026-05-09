@@ -117,6 +117,7 @@ public struct IngestJob: Job {
 
         var allDocumentIds: [String] = []
         var totalChunks = 0
+        let tenantMetadataKey = TenantIsolatedVectorStore.tenantMetadataKey
 
         for (index, docDTO) in documents.enumerated() {
             // Check cancellation before processing each document
@@ -135,10 +136,20 @@ public struct IngestJob: Job {
 
             // Chunk the document
             let chunks = try await chunker.chunk(document)
+            let tenantScopedChunks = chunks.map { chunk in
+                var metadata = chunk.metadata
+                metadata.custom[tenantMetadataKey] = .string(tenantId)
+                return Chunk(
+                    id: chunk.id,
+                    content: chunk.content,
+                    metadata: metadata,
+                    embedding: chunk.embedding
+                )
+            }
 
             // Embed chunks in batches for efficiency
             let batchSize = min(embedder.optimalBatchSize, 50)
-            for batch in chunks.chunked(into: batchSize) {
+            for batch in tenantScopedChunks.chunked(into: batchSize) {
                 // Check cancellation between batches
                 if await context.isCancelled() {
                     throw CancellationError()
@@ -149,7 +160,7 @@ public struct IngestJob: Job {
                 try await vectorStore.add(batch, embeddings: embeddings)
             }
 
-            totalChunks += chunks.count
+            totalChunks += tenantScopedChunks.count
         }
 
         // Report completion

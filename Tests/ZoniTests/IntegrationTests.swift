@@ -22,12 +22,17 @@
 import Testing
 import Foundation
 @testable import Zoni
+#if canImport(ZoniHTTP)
+@testable import ZoniHTTP
+#endif
 
-#if canImport(ZoniServer)
-@testable import ZoniServer
+#if canImport(ZoniServerPostgres)
+@testable import ZoniServerPostgres
 #endif
 
 // MARK: - Test Configuration
+
+private let integrationTestsEnabled = ProcessInfo.processInfo.environment["ZONI_RUN_INTEGRATION_TESTS"] == "1"
 
 /// Helper to check if integration tests should run for a given service
 private func shouldRunIntegrationTests(for service: String) -> Bool {
@@ -80,7 +85,12 @@ private func makeEmbedding(dimensions: Int = 1536, seed: Int = 0) -> Embedding {
 
 // MARK: - Qdrant Integration Tests
 
-@Suite("Qdrant Integration Tests", .tags(.integration))
+#if canImport(ZoniHTTP)
+@Suite(
+    "Qdrant Integration Tests",
+    .tags(.integration),
+    .enabled(if: integrationTestsEnabled, "Set ZONI_RUN_INTEGRATION_TESTS=1 to run integration tests")
+)
 struct QdrantIntegrationTests {
 
     @Test("Qdrant: Add, search, and delete chunks")
@@ -175,7 +185,11 @@ struct QdrantIntegrationTests {
 
 // MARK: - Pinecone Integration Tests
 
-@Suite("Pinecone Integration Tests", .tags(.integration))
+@Suite(
+    "Pinecone Integration Tests",
+    .tags(.integration),
+    .enabled(if: integrationTestsEnabled, "Set ZONI_RUN_INTEGRATION_TESTS=1 to run integration tests")
+)
 struct PineconeIntegrationTests {
 
     @Test("Pinecone: Add, search, and delete chunks")
@@ -237,13 +251,14 @@ struct PineconeIntegrationTests {
         #expect(afterDelete.isEmpty, "Chunks should be deleted")
     }
 }
+#endif
 
 // MARK: - PgVector Integration Tests
 
 // NOTE: PgVector integration tests temporarily disabled due to API changes.
 // TODO: Update to match current PgVectorStore API when needed.
 /*
-#if canImport(ZoniServer)
+#if canImport(ZoniServerPostgres)
 @Suite("PgVector Integration Tests", .tags(.integration))
 struct PgVectorIntegrationTests {
 

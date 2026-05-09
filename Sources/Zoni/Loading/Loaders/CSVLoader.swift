@@ -3,6 +3,7 @@
 // CSVLoader.swift - Loader for CSV/TSV files
 
 import Foundation
+import ZoniCore
 
 /// A document loader for CSV and TSV files with configurable parsing.
 ///

@@ -3,6 +3,7 @@
 // Sentence-based chunking strategy for splitting documents at sentence boundaries.
 
 import Foundation
+import ZoniCore
 
 // MARK: - SentenceChunker
 

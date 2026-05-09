@@ -3,6 +3,7 @@
 // Paragraph-based chunking strategy for splitting documents by paragraph boundaries.
 
 import Foundation
+import ZoniCore
 
 // MARK: - ParagraphChunker
 

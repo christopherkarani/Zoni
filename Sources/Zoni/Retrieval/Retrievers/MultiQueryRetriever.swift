@@ -3,6 +3,7 @@
 // MultiQueryRetriever.swift - LLM-based query expansion retrieval
 
 import Foundation
+import ZoniCore
 
 // MARK: - MultiQueryRetriever
 

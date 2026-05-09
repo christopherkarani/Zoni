@@ -3,6 +3,7 @@
 // VectorRetriever.swift - Vector similarity retrieval strategy
 
 import Foundation
+import ZoniCore
 
 // MARK: - VectorRetriever
 

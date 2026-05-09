@@ -3,6 +3,7 @@
 // LoadingUtils.swift - Utility functions for document loading
 
 import Foundation
+import ZoniCore
 
 /// Utility functions for document loading operations.
 ///
