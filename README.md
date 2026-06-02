@@ -82,9 +82,6 @@ The example projects are standalone Swift packages:
 
 ### Server-Side RAG (Linux/macOS)
 
-
-
-
 Build a simple RAG pipeline for server-side applications:
 
 ```swift
