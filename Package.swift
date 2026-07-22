@@ -36,7 +36,7 @@ let package = Package(
     ],
     dependencies: [
         // Phase 5A: Cryptography for JWT validation
-        .package(url: "https://github.com/apple/swift-crypto.git", from: "4.0.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0" ..< "5.0.0"),
 
         // Phase 5A: Logging for production deployments
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.0"),
